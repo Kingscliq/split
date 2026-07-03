@@ -1,6 +1,48 @@
-# Rust's output directory
-target
+# Rust output
+target/
 
-# Local settings
-.soroban
-.stellar
+# Stellar local settings
+.soroban/
+.stellar/
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
+# Next.js / frontend build output
+.next/
+out/
+dist/
+build/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+!/.env.example
+!/frontend/.env.example
+
+# OS / editor noise
+.DS_Store
+frontend/.DS_Store
+.vscode/
+frontend/.vscode/

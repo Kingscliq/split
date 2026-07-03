@@ -14,22 +14,35 @@ Split is not a full expense accounting app. It does not calculate long-running d
 
 1. Creator opens `/split/create`.
 2. Creator connects a Stellar wallet.
-3. Creator enters a title, token, total collection amount, participants, and display names.
-4. Frontend calculates equal participant amounts.
-5. Frontend validates contribution math.
+3. Creator enters a title, token, requested collection amount, final split amount, and participant rows.
+4. Each participant row contains a wallet address and display name.
+5. Frontend validates basic contribution inputs.
 6. Creator signs `create_split`.
-7. Contract stores the Split and participant shares.
-8. Frontend redirects to the public Split page.
+7. Contract validates that the final split amount divides evenly across participants.
+8. Contract calculates each participant's equal owed amount and stores the Split and participant shares.
+9. Frontend redirects to the public Split page.
 
 The creator is the receiver/collector and is not added as a payer. Participants are the people who owe the creator.
+
+The requested collection amount means the amount others are expected to pay back to the creator. It should not include the creator's own share. Frontend copy should ask: "How much do you want to collect from others?" and explain: "Enter the amount others are paying back to you. Do not include your own share."
 
 #### Equal Contribution Mode
 
 Use Equal mode when everyone owes the same agreed contribution for a shared expense such as internet subscription, gas refill, fuel, household foodstuff, group dues, or event contribution.
 
-The frontend calculates each participant's owed amount before calling the contract. The contract only stores the final amount per participant.
+The frontend shows an equal-share preview before submission, but the contract calculates the final equal owed amount from `total_amount / participant_count`. `requested_amount` is the original amount the creator wanted to collect, `total_amount` is the final amount submitted for equal splitting, and `waived_amount` is `requested_amount - total_amount`. If the final split amount does not divide evenly across participants, the contract rejects creation.
+
+If the creator reduces the collection amount to make the split even, the removed amount is stored as `waived_amount` for transparency. It is not assigned to any participant and is not collected by Split. It becomes a creator-approved waived remainder.
+
+Recommended frontend error copy for uneven splits: "This amount cannot be split equally between the selected participants. Change the amount or participant list. Any reduced amount will not be collected by Split."
 
 Custom contribution amounts are paused for MVP until the product rules for different remaining balances and off-chain payments are clearer.
+
+### Local Currency Display
+
+The contract stores `requested_amount`, `total_amount`, `waived_amount`, and participant shares in the selected settlement token's base units. The frontend may show NGN-friendly labels beside USDC or XLM values for user understanding, but exchange-rate display is off-chain context and not contract truth.
+
+For MVP, settlement should be clearly shown as the selected token. Future receipt uploads and richer NGN conversion can be added later with a backend, file storage, and exchange-rate source.
 
 ### Share a Split
 
@@ -123,7 +136,7 @@ The contract does not own:
 The frontend owns:
 
 - form state
-- equal split calculation before submission
+- equal split preview before submission
 - display formatting
 - short wallet address display
 - share links
@@ -153,11 +166,20 @@ No backend is required for the MVP. A backend or indexer may be added later for:
 | `creator` | `Address` | Wallet that created the Split and receives direct payments. |
 | `title` | `String` | Human-readable Split title. |
 | `token` | `Address` | Stellar asset contract used for payment. |
-| `total_amount` | `i128` | Sum of all participant owed amounts. |
+| `requested_amount` | `i128` | Original amount the creator wanted to collect from participants. |
+| `total_amount` | `i128` | Final amount split equally and collected through Split. |
+| `waived_amount` | `i128` | Informational amount waived by creator before creation. |
 | `total_paid` | `i128` | Sum of all paid amounts. |
 | `participant_count` | `u32` | Number of participant rows. |
 | `status` | `SplitStatus` | `Active`, `Completed`, or `Closed`. |
 | `created_at` | `u64` | Ledger timestamp at creation. |
+
+### Participant
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `address` | `Address` | Wallet assigned to this participant row. |
+| `display_name` | `String` | User-friendly label entered by the creator. |
 
 ### ParticipantShare
 
@@ -185,7 +207,7 @@ Use explicit keys:
 
 ### Write Functions
 
-- `create_split(creator, title, token, participants, display_names, amounts) -> Result<u32, SplitError>`
+- `create_split(creator, title, token, requested_amount, total_amount, participants) -> Result<u32, SplitError>`
 - `pay_share(split_id, payer, amount) -> Result<(), SplitError>`
 - `close_split(split_id) -> Result<(), SplitError>`
 
@@ -270,8 +292,8 @@ Recommended files:
 ### Create Split
 
 1. Validate form.
-2. Calculate equal participant amounts.
-3. Build `create_split` transaction with final owed amounts.
+2. Preview equal participant amounts.
+3. Build `create_split` transaction with total amount and participant rows.
 4. Request wallet signature.
 5. Submit transaction.
 6. Poll transaction status.

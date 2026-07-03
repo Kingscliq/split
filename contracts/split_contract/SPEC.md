@@ -33,14 +33,22 @@ The Split creator is the receiver/collector and is not a participant payer. Part
 
 ## Contribution Amount Decision
 
-Split supports equal contribution amounts in the frontend MVP.
+Split supports equal contribution amounts in the MVP.
 
-The frontend calculates final owed amounts, then passes those final amounts to `create_split`.
+The frontend may preview equal owed amounts, but the contract calculates the final owed amount for each participant.
 
-- Equal mode: the frontend divides the collection amount across participants.
+- Equal mode: the contract divides the collection amount across participants.
+- The collection amount is the amount others are paying back to the creator. It must not include the creator's own share.
+- `requested_amount` is the original amount the creator wanted to collect.
+- `total_amount` is the final amount split equally and collected through Split.
+- `waived_amount` is `requested_amount - total_amount`.
 - Custom amounts are paused for MVP until the product rules for different remaining balances and off-chain payments are clearer.
 
-The contract validates the final participant amount list and treats it as the source of truth.
+The contract rejects Split creation if the total amount does not divide evenly across participants.
+
+If the creator reduces the collection amount to make the split even, the removed amount is stored as `waived_amount` for transparency. It is not assigned to any participant and is not collected by Split. It becomes a creator-approved waived remainder.
+
+Amounts are stored in the selected settlement token's base units. NGN display values, exchange-rate estimates, and receipt-backed fiat context are frontend/backend concerns and are not contract truth in the MVP.
 
 ## Deadline Decision
 
@@ -87,11 +95,22 @@ Fields:
 - `creator: Address`
 - `title: String`
 - `token: Address`
+- `requested_amount: i128`
 - `total_amount: i128`
+- `waived_amount: i128`
 - `total_paid: i128`
 - `participant_count: u32`
 - `status: SplitStatus`
 - `created_at: u64`
+
+### Participant
+
+Fields:
+
+- `address: Address`
+- `display_name: String`
+
+`Participant` is the input type used by `create_split`. It keeps each participant's wallet address and display name together so the contract does not rely on parallel arrays.
 
 ### ParticipantShare
 
@@ -139,9 +158,9 @@ Recommended `SplitError` variants:
 
 - `InvalidTitle`
 - `InvalidParticipantCount`
-- `InvalidDisplayNameCount`
-- `InvalidAmountCount`
+- `InvalidDisplayName`
 - `InvalidAmount`
+- `UnevenSplit`
 - `DuplicateParticipant`
 - `CreatorCannotBeParticipant`
 - `SplitNotFound`
@@ -151,6 +170,7 @@ Recommended `SplitError` variants:
 - `SplitCompleted`
 - `Overpayment`
 - `InvalidPageLimit`
+- `InvalidWaivedAmount`
 
 ## Functions
 
@@ -164,9 +184,9 @@ create_split(
     creator: Address,
     title: String,
     token: Address,
-    participants: Vec<Address>,
-    display_names: Vec<String>,
-    amounts: Vec<i128>,
+    requested_amount: i128,
+    total_amount: i128,
+    participants: Vec<Participant>,
 ) -> Result<u32, SplitError>
 ```
 
@@ -180,9 +200,10 @@ Validation:
 - title length must not exceed `MAX_TITLE_LEN`
 - participants length must be greater than 0
 - participants length must not exceed `MAX_PARTICIPANTS`
-- display names length must match participants length
-- amounts length must match participants length
-- each amount must be greater than 0
+- requested amount must be greater than 0
+- total amount must be greater than 0
+- requested amount must be greater than or equal to total amount
+- total amount must divide evenly across participant count
 - each display name length must not exceed `MAX_DISPLAY_NAME_LEN`
 - duplicate participant addresses must be rejected
 - creator address must not be included in participants
@@ -190,9 +211,10 @@ Validation:
 Behavior:
 
 1. Read current `SplitCount`, defaulting to 0.
-2. Calculate `total_amount` as the sum of all participant amounts.
-3. Store a new `Split` with `total_paid = 0` and `status = Active`.
-4. Store each `ParticipantShare`.
+2. Calculate `waived_amount` as `requested_amount - total_amount`.
+3. Calculate `amount_owed` as `total_amount / participant_count`.
+4. Store a new `Split` with `total_paid = 0`, `waived_amount`, and `status = Active`.
+5. Store each `ParticipantShare` with the calculated equal `amount_owed`.
 5. Store each participant address by index using `ParticipantAt`.
 6. Increment `SplitCount`.
 7. Emit `split_created`.
