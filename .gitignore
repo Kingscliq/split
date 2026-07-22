@@ -35,6 +35,7 @@ frontend/pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+/.env.deploy
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
