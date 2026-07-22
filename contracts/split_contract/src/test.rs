@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{vec, Address, Env, String, Vec};
+use soroban_sdk::testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation};
+use soroban_sdk::{token, vec, Address, Env, IntoVal, String, Symbol, Vec};
 
 struct TestSetup {
     env: Env,
@@ -19,9 +19,14 @@ fn setup() -> TestSetup {
     let contract_id = env.register(SplitContract, ());
     let client = SplitContractClient::new(&env, &contract_id);
     let creator = Address::generate(&env);
-    let token = Address::generate(&env);
+    let token = env
+        .register_stellar_asset_contract_v2(creator.clone())
+        .address();
     let ada = Address::generate(&env);
     let tolu = Address::generate(&env);
+    let token_admin = token::StellarAssetClient::new(&env, &token);
+    token_admin.mint(&ada, &1_000);
+    token_admin.mint(&tolu, &1_000);
 
     TestSetup {
         env,
@@ -45,6 +50,20 @@ fn participants(env: &Env, ada: Address, tolu: Address) -> Vec<Participant> {
             display_name: String::from_str(env, "Tolu"),
         },
     ]
+}
+
+fn create_default_split(setup: &TestSetup) -> u32 {
+    let title = String::from_str(&setup.env, "House internet");
+    let participants = participants(&setup.env, setup.ada.clone(), setup.tolu.clone());
+
+    setup.client.create_split(
+        &setup.creator,
+        &title,
+        &setup.token,
+        &100_i128,
+        &100_i128,
+        &participants,
+    )
 }
 
 #[test]
@@ -368,4 +387,191 @@ fn split_storage_types_can_be_constructed() {
     assert_eq!(split.status, SplitStatus::Active);
     assert_eq!(share.status, ParticipantStatus::Pending);
     assert_eq!(split.total_amount, share.amount_owed);
+}
+
+#[test]
+fn get_participants_returns_bounded_page() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    let page = setup.client.get_participants(&split_id, &0, &1);
+
+    assert_eq!(page.len(), 1);
+    assert_eq!(page.get(0).unwrap().participant, setup.ada);
+}
+
+#[test]
+fn get_participants_rejects_invalid_limit() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    let result = setup.client.try_get_participants(&split_id, &0, &0);
+
+    assert_eq!(result, Err(Ok(SplitError::InvalidPageLimit)));
+}
+
+#[test]
+fn pay_share_partial_payment_updates_state_and_transfers_token() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+    let token_client = token::TokenClient::new(&setup.env, &setup.token);
+
+    setup.client.pay_share(&split_id, &setup.ada, &25_i128);
+
+    let ada_share = setup.client.get_participant(&split_id, &setup.ada).unwrap();
+    let split = setup.client.get_split(&split_id).unwrap();
+
+    assert_eq!(ada_share.amount_paid, 25);
+    assert_eq!(ada_share.status, ParticipantStatus::Partial);
+    assert_eq!(split.total_paid, 25);
+    assert_eq!(split.status, SplitStatus::Active);
+    assert_eq!(token_client.balance(&setup.ada), 975);
+    assert_eq!(token_client.balance(&setup.creator), 25);
+}
+
+#[test]
+fn pay_share_requires_payer_authorization() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.pay_share(&split_id, &setup.ada, &25_i128);
+
+    let auths = setup.env.auths();
+    let (authorized_address, invocation) = auths.first().unwrap();
+
+    assert_eq!(authorized_address, &setup.ada);
+    assert_eq!(
+        invocation.function,
+        AuthorizedFunction::Contract((
+            setup.client.address.clone(),
+            Symbol::new(&setup.env, "pay_share"),
+            (&split_id, &setup.ada, 25_i128).into_val(&setup.env),
+        ))
+    );
+    assert_eq!(invocation.sub_invocations.len(), 1);
+}
+
+#[test]
+fn pay_share_full_participant_payment_sets_paid() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.pay_share(&split_id, &setup.ada, &50_i128);
+
+    let ada_share = setup.client.get_participant(&split_id, &setup.ada).unwrap();
+    let split = setup.client.get_split(&split_id).unwrap();
+
+    assert_eq!(ada_share.amount_paid, 50);
+    assert_eq!(ada_share.status, ParticipantStatus::Paid);
+    assert_eq!(split.total_paid, 50);
+    assert_eq!(split.status, SplitStatus::Active);
+}
+
+#[test]
+fn final_payment_marks_split_completed() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.pay_share(&split_id, &setup.ada, &50_i128);
+    setup.client.pay_share(&split_id, &setup.tolu, &50_i128);
+
+    let split = setup.client.get_split(&split_id).unwrap();
+    let tolu_share = setup
+        .client
+        .get_participant(&split_id, &setup.tolu)
+        .unwrap();
+
+    assert_eq!(split.total_paid, 100);
+    assert_eq!(split.status, SplitStatus::Completed);
+    assert_eq!(tolu_share.status, ParticipantStatus::Paid);
+}
+
+#[test]
+fn pay_share_rejects_non_participant() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+    let stranger = Address::generate(&setup.env);
+
+    let result = setup.client.try_pay_share(&split_id, &stranger, &10_i128);
+
+    assert_eq!(result, Err(Ok(SplitError::ParticipantNotFound)));
+}
+
+#[test]
+fn pay_share_rejects_overpayment() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    let result = setup.client.try_pay_share(&split_id, &setup.ada, &51_i128);
+
+    assert_eq!(result, Err(Ok(SplitError::Overpayment)));
+}
+
+#[test]
+fn completed_split_rejects_additional_payment() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.pay_share(&split_id, &setup.ada, &50_i128);
+    setup.client.pay_share(&split_id, &setup.tolu, &50_i128);
+    let result = setup.client.try_pay_share(&split_id, &setup.ada, &1_i128);
+
+    assert_eq!(result, Err(Ok(SplitError::SplitCompleted)));
+}
+
+#[test]
+fn creator_can_close_active_split() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.close_split(&split_id);
+
+    let split = setup.client.get_split(&split_id).unwrap();
+    assert_eq!(split.status, SplitStatus::Closed);
+}
+
+#[test]
+fn close_split_requires_creator_authorization() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.close_split(&split_id);
+
+    assert_eq!(
+        setup.env.auths(),
+        [(
+            setup.creator.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    setup.client.address.clone(),
+                    Symbol::new(&setup.env, "close_split"),
+                    (&split_id,).into_val(&setup.env),
+                )),
+                sub_invocations: [].into(),
+            }
+        )]
+    );
+}
+
+#[test]
+fn closed_split_rejects_payment() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.close_split(&split_id);
+    let result = setup.client.try_pay_share(&split_id, &setup.ada, &50_i128);
+
+    assert_eq!(result, Err(Ok(SplitError::SplitClosed)));
+}
+
+#[test]
+fn completed_split_cannot_be_closed() {
+    let setup = setup();
+    let split_id = create_default_split(&setup);
+
+    setup.client.pay_share(&split_id, &setup.ada, &50_i128);
+    setup.client.pay_share(&split_id, &setup.tolu, &50_i128);
+    let result = setup.client.try_close_split(&split_id);
+
+    assert_eq!(result, Err(Ok(SplitError::SplitCompleted)));
 }

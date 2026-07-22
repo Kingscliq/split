@@ -129,14 +129,14 @@ Fields:
 
 Recommended `DataKey` variants:
 
-- `SplitCount`
+- `NextSplitId`
 - `Split(u32)`
 - `Participant(u32, Address)`
 - `ParticipantAt(u32, u32)`
 
 Storage behavior:
 
-- `SplitCount` stores the next sequential id.
+- `NextSplitId` stores the next sequential id.
 - `Split(id)` stores the Split record.
 - `Participant(id, address)` stores that participant's share.
 - `ParticipantAt(id, index)` stores each participant address for bounded list reads.
@@ -210,13 +210,13 @@ Validation:
 
 Behavior:
 
-1. Read current `SplitCount`, defaulting to 0.
+1. Read current `NextSplitId`, defaulting to 0.
 2. Calculate `waived_amount` as `requested_amount - total_amount`.
 3. Calculate `amount_owed` as `total_amount / participant_count`.
 4. Store a new `Split` with `total_paid = 0`, `waived_amount`, and `status = Active`.
 5. Store each `ParticipantShare` with the calculated equal `amount_owed`.
 5. Store each participant address by index using `ParticipantAt`.
-6. Increment `SplitCount`.
+6. Increment `NextSplitId`.
 7. Emit `split_created`.
 8. Return new split id.
 
@@ -461,6 +461,8 @@ Required tests:
 
 - Public pages can call `get_split` and `get_participants`.
 - Payment panels can call `get_participant` for the connected wallet.
+- The MVP frontend offers verified XLM and USDC settlement options using the correct token contract address for the selected network.
+- The frontend handles USDC trustline detection, token decimals, balances, and insufficient-balance guidance.
 - Frontend should display `display_name` when non-empty and shortened address otherwise.
 - Frontend should treat contract state as source of truth after transaction confirmation.
 
@@ -476,4 +478,5 @@ Future contract or architecture work may add:
 - reusable groups
 - protocol fees
 - USDC-specific mainnet configuration
+- trusted on-ramp or swap integration for acquiring the selected settlement token
 - indexer-backed creator dashboards

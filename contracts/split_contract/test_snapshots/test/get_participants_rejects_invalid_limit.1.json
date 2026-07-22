@@ -82,13 +82,13 @@
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
                 {
-                  "string": "Fuel contribution"
+                  "string": "House internet"
                 },
                 {
                   "address": "CBUSYNQKASUYFWYC3M2GUEDMX4AIVWPALDBYJPNK6554BREHTGZ2IUNF"
                 },
                 {
-                  "i128": "101"
+                  "i128": "100"
                 },
                 {
                   "i128": "100"
@@ -144,7 +144,6 @@
         }
       ]
     ],
-    [],
     []
   ],
   "ledger": {
@@ -505,7 +504,7 @@
                       "symbol": "requested_amount"
                     },
                     "val": {
-                      "i128": "101"
+                      "i128": "100"
                     }
                   },
                   {
@@ -525,7 +524,7 @@
                       "symbol": "title"
                     },
                     "val": {
-                      "string": "Fuel contribution"
+                      "string": "House internet"
                     }
                   },
                   {
@@ -557,7 +556,7 @@
                       "symbol": "waived_amount"
                     },
                     "val": {
-                      "i128": "1"
+                      "i128": "0"
                     }
                   }
                 ]

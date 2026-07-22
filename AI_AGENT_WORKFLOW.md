@@ -43,6 +43,7 @@ The MVP should support:
 - creating a Split
 - adding participants
 - equal assigned amounts
+- verified XLM and USDC settlement options
 - public shared Split page
 - wallet connection
 - paying assigned amount
@@ -170,8 +171,8 @@ Split is production-ready enough for Rise In when:
 
 After MVP:
 
-- support USDC or a trusted stable asset
 - add Stellar anchor/ramp path for local currency access
+- add an in-app asset swap path for users who hold XLM but need the selected settlement token
 - add notifications/reminders
 - add event indexing with Supabase/Postgres
 - add participant aliases for non-crypto-friendly display

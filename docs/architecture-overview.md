@@ -42,7 +42,9 @@ Custom contribution amounts are paused for MVP until the product rules for diffe
 
 The contract stores `requested_amount`, `total_amount`, `waived_amount`, and participant shares in the selected settlement token's base units. The frontend may show NGN-friendly labels beside USDC or XLM values for user understanding, but exchange-rate display is off-chain context and not contract truth.
 
-For MVP, settlement should be clearly shown as the selected token. Future receipt uploads and richer NGN conversion can be added later with a backend, file storage, and exchange-rate source.
+The contract remains settlement-token agnostic and accepts the address of any SEP-41-compatible token contract. For the MVP, the frontend offers verified XLM and USDC options and clearly shows the selected token. USDC support uses network-specific verified asset configuration plus trustline and balance onboarding in the frontend; it does not require a different payment contract.
+
+Future iterations should add USDC acquisition support through a trusted Stellar anchor/on-ramp or swap integration so users who only hold XLM or fiat can obtain the settlement asset without leaving the Split flow. Receipt uploads and richer NGN conversion can also be added later with a backend, file storage, and exchange-rate source.
 
 ### Share a Split
 
@@ -196,7 +198,7 @@ No backend is required for the MVP. A backend or indexer may be added later for:
 
 Use explicit keys:
 
-- `SplitCount`
+- `NextSplitId`
 - `Split(u32)`
 - `Participant(u32, Address)`
 - `ParticipantAt(u32, u32)`
@@ -337,8 +339,9 @@ Included:
 Deferred:
 
 - escrow and refund rules
-- USDC/mainnet launch hardening
+- mainnet asset configuration and validation hardening
 - Stellar anchor/ramp integrations
+- in-app asset swaps for users who need the selected settlement token
 - notifications
 - reusable groups
 - creator dashboards
