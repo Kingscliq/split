@@ -62,7 +62,8 @@ export default function CreateSplitPage() {
         totalAmount: math.finalUnits,
         participants: participants.map((participant) => ({ address: participant.address.trim(), displayName: participant.name.trim() })),
       });
-      router.push(`/split/${Number(result.value)}`);
+      const receipt = new URLSearchParams({ action: "create", tx: result.hash });
+      router.push(`/split/${Number(result.value)}?${receipt.toString()}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not create the split.");
     } finally {
@@ -76,6 +77,11 @@ export default function CreateSplitPage() {
         <Link href="/" className="back-button" aria-label="Back to dashboard">←</Link>
         <div><p className="eyebrow">New collection</p><h1>Create a split</h1></div>
         <span className="step-pill">1 of 1</span>
+      </div>
+
+      <div className="onboarding-callout">
+        <div><strong>New to Stellar Testnet?</strong><span>Set up Freighter and find your public wallet address before creating a Split.</span></div>
+        <Link href="/onboarding">Open the 3-minute guide <span>→</span></Link>
       </div>
 
       <div className="create-layout">

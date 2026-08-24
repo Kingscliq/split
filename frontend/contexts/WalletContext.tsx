@@ -8,7 +8,7 @@ type WalletContextValue = {
   address: string | null;
   connecting: boolean;
   error: string | null;
-  connect: () => Promise<string | null>;
+  connect: (onError?: (message: string) => void) => Promise<string | null>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -18,7 +18,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (onError?: (message: string) => void) => {
     setConnecting(true);
     setError(null);
     try {
@@ -32,7 +32,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setAddress(access.address);
       return access.address;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not connect Freighter.");
+      const message = caught instanceof Error ? caught.message : "Could not connect Freighter.";
+      setError(message);
+      onError?.(message);
       return null;
     } finally {
       setConnecting(false);
