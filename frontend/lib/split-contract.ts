@@ -83,9 +83,9 @@ const contract = new Contract(CONTRACT_ID);
 const transactionErrors: Record<string, string> = {
   txBadAuth: "The transaction signature did not authorize the connected Stellar account.",
   txBadSeq: "The account sequence changed before submission. Refresh and try again.",
-  txInsufficientBalance: "The connected account does not have enough testnet XLM for the transaction fee and reserve.",
+  txInsufficientBalance: "This wallet does not have enough Testnet XLM for the payment, fee, and account reserve.",
   txInsufficientFee: "The transaction fee was below the amount required by Stellar.",
-  txNoAccount: "The connected wallet account is not funded on Stellar testnet.",
+  txNoAccount: "This wallet has no Testnet XLM yet. Fund it with Friendbot, then try again.",
   txTooLate: "The transaction expired before it reached Stellar. Please try again.",
   txTooEarly: "The transaction was submitted before its valid time window.",
   txSorobanInvalid: "Stellar rejected the contract transaction as invalid.",
@@ -99,6 +99,9 @@ function enumName(value: unknown): string {
 
 function contractError(error: unknown): Error {
   const message = error instanceof Error ? error.message : String(error);
+  if (/account[^\n]*(not found|does not exist)|not found[^\n]*account/i.test(message)) {
+    return new Error("This wallet has no Testnet XLM yet. Fund it with Friendbot, then try again.");
+  }
   const code = message.match(/Error\(Contract, #(\d+)\)/)?.[1];
   const names: Record<string, string> = {
     "1": "Add a title between 1 and 80 characters.",
@@ -150,7 +153,7 @@ async function buildInvocation(source: string, method: string, args: xdr.ScVal[]
     .build();
 }
 
-async function read(method: string, args: xdr.ScVal[] = []) {
+async function readFrom(target: Contract, method: string, args: xdr.ScVal[] = []) {
   try {
     // Read-only simulations do not consume sequence numbers, so the source only
     // needs to be a valid public key; it does not need to remain funded.
@@ -158,7 +161,7 @@ async function read(method: string, args: xdr.ScVal[] = []) {
       fee: BASE_FEE,
       networkPassphrase: NETWORK_PASSPHRASE,
     })
-      .addOperation(contract.call(method, ...args))
+      .addOperation(target.call(method, ...args))
       .setTimeout(30)
       .build();
     const simulation = await server.simulateTransaction(transaction);
@@ -168,6 +171,10 @@ async function read(method: string, args: xdr.ScVal[] = []) {
   } catch (error) {
     throw contractError(error);
   }
+}
+
+async function read(method: string, args: xdr.ScVal[] = []) {
+  return readFrom(contract, method, args);
 }
 
 async function write(source: string, method: string, args: xdr.ScVal[]) {
@@ -290,6 +297,27 @@ export async function getRecentSplits(limit = 12): Promise<SplitRecord[]> {
   const first = Math.max(0, count - limit);
   const records = await Promise.all(Array.from({ length: count - first }, (_, offset) => getSplit(first + offset)));
   return records.filter((record): record is SplitRecord => record !== null).reverse();
+}
+
+export async function getSplitsForWallet(wallet: string, limit = 50): Promise<SplitRecord[]> {
+  const count = await getSplitCount();
+  const first = Math.max(0, count - Math.max(1, Math.min(limit, 50)));
+  const records = (await Promise.all(
+    Array.from({ length: count - first }, (_, offset) => getSplit(first + offset)),
+  )).filter((record): record is SplitRecord => record !== null);
+
+  const visible = await Promise.all(records.map(async (record) => {
+    if (record.creator === wallet) return record;
+    const shares = await getParticipants(record.id, 0, record.participantCount);
+    return shares.some((share) => share.participant === wallet) ? record : null;
+  }));
+
+  return visible.filter((record): record is SplitRecord => record !== null).reverse();
+}
+
+export async function getTokenBalance(token: string, wallet: string): Promise<bigint> {
+  const value = await readFrom(new Contract(token), "balance", [new Address(wallet).toScVal()]);
+  return BigInt(value ?? 0);
 }
 
 function participantScVal(participant: NewParticipant) {

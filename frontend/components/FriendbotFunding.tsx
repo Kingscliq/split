@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { useWallet } from "@/contexts/WalletContext";
 import { shortAddress } from "@/lib/split-contract";
 
@@ -32,7 +33,7 @@ export function FriendbotFunding() {
 
     // Reconnect on every request so WalletContext re-checks the selected network.
     let connectionError: string | null = null;
-    const testnetAddress = await connect((message) => { connectionError = message; });
+    const testnetAddress = await connect((issue) => { connectionError = issue.message; });
     if (!testnetAddress) {
       setState({
         kind: "error",
@@ -59,7 +60,7 @@ export function FriendbotFunding() {
   const busy = connecting || state.kind === "funding";
 
   return (
-    <article className="guide-step friendbot-card" aria-labelledby="friendbot-title">
+    <article className="guide-step friendbot-card" id="fund-testnet-wallet" aria-labelledby="friendbot-title">
       <span className="guide-step-number">05</span>
       <div className="friendbot-content">
         <div className="friendbot-copy">
@@ -68,7 +69,7 @@ export function FriendbotFunding() {
             <p className="eyebrow">Testnet funding</p>
             <h2 id="friendbot-title">Fund your test wallet</h2>
             <p>Friendbot creates or tops up your Testnet account with fake XLM. It sends no real money and only receives your public wallet address.</p>
-            {address && <code title={address}>{shortAddress(address)}</code>}
+            {address && <CopyAddressButton address={address} className="friendbot-address" />}
           </div>
         </div>
 

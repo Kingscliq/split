@@ -44,6 +44,11 @@ Payments move directly from the participant to the creator. The Split contract t
 - Follow an in-app Testnet wallet setup and safety guide
 - Fund a connected Testnet wallet with Stellar Friendbot
 - View and copy confirmed transaction receipts with Stellar Expert links
+- Copy connected and participant public wallet addresses
+- Detect wrong-network changes and reconnect automatically after Freighter is switched to Testnet
+- Check token balances before payment and distinguish insufficient funds from an unfunded wallet
+- Show wallet and transaction errors beside the action that needs attention
+- Limit the dashboard to Splits created by or assigned to the connected wallet
 - Open a Split page without connecting a wallet
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress
@@ -56,7 +61,7 @@ Payments move directly from the participant to the creator. The Split contract t
 ### Current MVP limitations
 
 - Participants must provide wallet addresses before the creator creates a Split; self-join and claim links are future work.
-- Testnet wallet installation and funding are not yet guided inside the application.
+- Freighter requires the user to approve network changes inside the wallet; Split detects the change and reconnects automatically once Testnet is selected.
 - QR-code sharing is not implemented.
 - There is no built-in analytics dashboard or user identity system. Level 5 usage will be measured using unique participating wallet addresses, successful transactions, feedback responses, and analytics screenshots.
 - USDC onboarding requires a Testnet asset balance and may require additional trustline guidance. XLM is the recommended asset for the first user cohort.
@@ -209,6 +214,11 @@ Every shipped feedback-driven change must link to its evidence and implementatio
 | Sharing should work beyond copied links | Add and validate a scannable QR code on the public Split page | Mobile scan test and user rating | Pending user feedback and implementation |
 | Transaction progress can be unclear | Improve signing, submission, confirmation, retry, and failure messages | Controlled wallet-state tests | Pending user feedback and implementation |
 | Users need confidence that activity is real | Add clear explorer links for the contract and successful transactions | Verify every displayed link on Testnet | Pending user feedback and implementation |
+| Wallet addresses are difficult to reuse | Add copy controls for the connected wallet and participant addresses | Desktop and mobile clipboard test | Implemented locally; commit pending |
+| Missing Freighter and wrong-network errors block onboarding | Add an install link, explicit Testnet guidance, and automatic network-change detection | Missing-extension and Public-to-Testnet wallet tests | Implemented locally; commit pending |
+| Unfunded wallets are reported as nonexistent accounts | Check XLM/token balances before payment and provide a Friendbot recovery path | Unfunded and insufficient-balance payment tests | Implemented locally; commit pending |
+| Contract-wide activity exposes unrelated Splits | Filter dashboard results to Splits created by or assigned to the connected wallet | Creator, participant, and unrelated-wallet dashboard tests | Implemented locally; commit pending |
+| Payment errors are too far from the pressed action | Render wallet, balance, and transaction errors directly inside the payment card | Controlled failure-state UI tests | Implemented locally; commit pending |
 
 Baseline implementation and QA history can be reviewed in the [frontend implementation commit](https://github.com/Kingscliq/split/commit/c6f1eda), [QA report commit](https://github.com/Kingscliq/split/commit/6c16cd6), and [deployment-script commit](https://github.com/Kingscliq/split/commit/1644132). These are baseline commits, not substitutes for the required feedback-driven iteration commits.
 
