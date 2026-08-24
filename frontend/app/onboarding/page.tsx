@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { FriendbotFunding } from "@/components/FriendbotFunding";
 
 const steps = [
   {
@@ -54,6 +55,7 @@ export default function OnboardingPage() {
             </div>
           </article>
         ))}
+        <FriendbotFunding />
       </section>
 
       <section className="guide-ready">
@@ -64,6 +66,7 @@ export default function OnboardingPage() {
         <ul>
           <li><span aria-hidden="true">✓</span> Freighter is installed and unlocked</li>
           <li><span aria-hidden="true">✓</span> The selected network says Testnet</li>
+          <li><span aria-hidden="true">✓</span> Freighter shows a Testnet XLM balance</li>
           <li><span aria-hidden="true">✓</span> You copied only your public G… address</li>
         </ul>
         <div className="guide-actions">

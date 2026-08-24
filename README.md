@@ -42,6 +42,7 @@ Payments move directly from the participant to the creator. The Split contract t
 - Settle in native XLM or a configured Testnet USDC token
 - Connect and sign transactions with Freighter
 - Follow an in-app Testnet wallet setup and safety guide
+- Fund a connected Testnet wallet with Stellar Friendbot
 - Open a Split page without connecting a wallet
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress

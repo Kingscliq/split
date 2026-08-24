@@ -245,9 +245,20 @@ button { cursor: pointer; }
 .guide-step { min-height: 190px; padding: 23px; border: 1px solid var(--line); border-radius: 22px; display: flex; flex-direction: column; justify-content: space-between; background: var(--surface); }
 .guide-step-number { color: var(--lime); font-family: var(--font-geist-mono), monospace; font-size: 11px; }
 .guide-step h2 { margin: 35px 0 8px; font-size: 20px; letter-spacing: -.04em; }.guide-step p { max-width: 440px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-.guide-ready { margin-top: 18px; padding: 28px; border-radius: 24px; background: var(--lime); color: #0b0b0b; }
+.friendbot-card { grid-column: 1 / -1; width: 100%; min-height: 0; padding: 28px; border-color: transparent; justify-self: stretch; gap: 18px; background: var(--blue); color: #0b0b0b; }
+.friendbot-card .guide-step-number { color: rgba(0,0,0,.58); }
+.friendbot-content { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) minmax(280px,.42fr); align-items: center; gap: 40px; }
+.friendbot-copy { display: flex; align-items: flex-start; gap: 15px; }.friendbot-mark { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 14px; display: grid; place-items: center; background: #111; color: var(--blue); font-size: 18px; }
+.friendbot-copy .eyebrow { margin-bottom: 5px; color: rgba(0,0,0,.52); }.friendbot-copy h2 { margin: 0 0 7px; font-size: 28px; letter-spacing: -.055em; }.friendbot-copy p:not(.eyebrow) { max-width: 590px; margin: 0; color: rgba(0,0,0,.62); font-size: 11px; line-height: 1.55; }.friendbot-copy code { display: inline-block; margin-top: 9px; padding: 5px 8px; border-radius: 8px; background: rgba(0,0,0,.09); font-size: 9px; }
+.friendbot-action { min-width: 230px; padding: 16px; border-radius: 18px; display: grid; gap: 9px; justify-items: stretch; background: rgba(255,255,255,.32); }.friendbot-action-label { color: rgba(0,0,0,.58); font-size: 9px; font-weight: 700; text-align: center; }.friendbot-action .button { width: 100%; min-height: 50px; font-size: 11px; }.friendbot-action small { color: rgba(0,0,0,.55); text-align: center; font-size: 8px; }
+.friendbot-status { width: 100%; margin: 0; padding: 13px 15px; border: 1px solid transparent; border-radius: 14px; display: flex; align-items: flex-start; gap: 10px; font-size: 10px; font-weight: 650; line-height: 1.5; }
+.friendbot-status-icon { width: 20px; height: 20px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; background: currentColor; font-size: 11px; font-weight: 850; }
+.friendbot-status-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }.friendbot-status-copy strong, .friendbot-status-copy > span { display: block; }.friendbot-status-copy strong { font-size: 10px; }.friendbot-status-copy > span { font-size: 9px; font-weight: 520; }
+.friendbot-status.success { border-color: rgba(179,255,204,.28); background: #123a25; color: #c4ffd6; }.friendbot-status.success .friendbot-status-icon { background: #c4ffd6; color: #123a25; }
+.friendbot-status.error { border-color: rgba(255,174,200,.32); background: #35101e; color: #ffc1d4; }.friendbot-status.error .friendbot-status-icon { background: #ff8fb3; color: #35101e; }
+.guide-ready { margin-top: 12px; padding: 28px; border-radius: 24px; background: var(--lime); color: #0b0b0b; }
 .guide-ready .eyebrow { color: rgba(0,0,0,.55); }.guide-ready h2 { margin: 0; font-size: 28px; letter-spacing: -.05em; }
-.guide-ready ul { margin: 22px 0; padding: 18px 0; border-top: 1px solid rgba(0,0,0,.16); border-bottom: 1px solid rgba(0,0,0,.16); display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; list-style: none; }
+.guide-ready ul { margin: 22px 0; padding: 18px 0; border-top: 1px solid rgba(0,0,0,.16); border-bottom: 1px solid rgba(0,0,0,.16); display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; list-style: none; }
 .guide-ready li { display: flex; gap: 8px; font-size: 10px; line-height: 1.45; }.guide-ready li span { font-weight: 850; }
 .guide-actions { display: flex; gap: 9px; flex-wrap: wrap; }.guide-actions .button-primary { background: #090909; color: white; }.guide-secondary { border: 1px solid rgba(0,0,0,.22); color: #111; background: transparent; }
 .guide-next-note { margin: 14px 0 0; color: rgba(0,0,0,.58); font-size: 9px; }
@@ -262,6 +273,7 @@ button { cursor: pointer; }
   .page-content { padding: 29px 18px 100px; }
   .desktop-action { display: none; }
   .overview-grid, .create-layout, .detail-grid { grid-template-columns: 1fr; }
+  .friendbot-content { grid-template-columns: 1fr; }.friendbot-action { width: 100%; }
   .guide-ready ul { grid-template-columns: 1fr; }
   .hero-card { min-height: 280px; }
   .summary-card { position: static; }
@@ -295,6 +307,7 @@ button { cursor: pointer; }
   .pay-card { min-height: 330px; margin: 0 -8px; }
   .share-strip { align-items: flex-start; gap: 16px; flex-direction: column; }.share-buttons { width: 100%; }.share-buttons > * { flex: 1; }
   .guide-heading { flex-direction: column; gap: 16px; }.guide-heading h1 { font-size: 48px; }.guide-steps { grid-template-columns: 1fr; }.guide-step { min-height: 170px; }.guide-ready { padding: 23px 19px; }.guide-actions { flex-direction: column; }.guide-actions .button { width: 100%; }
+  .friendbot-card { padding: 22px 18px; }.friendbot-copy { flex-direction: column; }.friendbot-action { padding: 13px; }.friendbot-action .button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
