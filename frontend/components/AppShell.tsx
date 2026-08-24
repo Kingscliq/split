@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminNavLink } from "@/components/AdminNavLink";
+import { NotificationBell, NotificationProvider } from "@/components/NotificationCenter";
 import { WalletButton } from "@/components/WalletButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -19,7 +20,7 @@ function Logo() {
 
 export function AppShell({ children, active }: AppShellProps) {
   return (
-    <main className="site-canvas">
+    <NotificationProvider><main className="site-canvas">
       <div className="app-window">
         <aside className="sidebar">
           <Link className="brand" href="/" aria-label="Split home">
@@ -51,16 +52,17 @@ export function AppShell({ children, active }: AppShellProps) {
         <section className="app-main">
           <div className="mobile-header">
             <Link className="brand" href="/" aria-label="Split home"><Logo /><span>split</span></Link>
-            <div className="header-actions"><AdminNavLink compact /><Link className="mobile-guide-link" href="/onboarding" aria-label="Open Testnet setup guide">?</Link><ThemeToggle /><WalletButton /></div>
+            <div className="header-actions"><AdminNavLink compact /><NotificationBell /><Link className="mobile-guide-link" href="/onboarding" aria-label="Open Testnet setup guide">?</Link><ThemeToggle /><WalletButton /></div>
           </div>
           <div className="topbar">
             <p><span className="status-dot" /> Testnet</p>
+            <NotificationBell />
             <ThemeToggle />
             <WalletButton />
           </div>
           <div className="page-content">{children}</div>
         </section>
       </div>
-    </main>
+    </main></NotificationProvider>
   );
 }

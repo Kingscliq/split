@@ -96,6 +96,15 @@ button { cursor: pointer; }
 .mobile-header { display: none; }
 .mobile-guide-link, .mobile-admin-link { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--control-text); font-size: 13px; font-weight: 760; }
 .mobile-admin-link { color: var(--lime); }
+.notification-control { position: relative; }
+.notification-bell { width: 38px; height: 38px; padding: 0; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; position: relative; background: var(--surface); color: var(--control-text); }
+.notification-bell > span { font-size: 18px; transform: rotate(-15deg); }.notification-bell > b { min-width: 17px; height: 17px; padding: 0 4px; border: 2px solid var(--main-bg); border-radius: 999px; display: grid; place-items: center; position: absolute; top: -5px; right: -5px; background: var(--pink); color: #111; font-size: 8px; }
+.notification-panel { width: 340px; padding: 17px; border: 1px solid var(--line); border-radius: 20px; position: absolute; z-index: 70; top: calc(100% + 10px); right: 0; background: var(--surface); color: var(--cream); box-shadow: 0 20px 55px rgba(0,0,0,.38); }
+.notification-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; padding: 2px 2px 13px; }.notification-panel-heading .eyebrow { margin-bottom: 3px; }.notification-panel-heading strong { font-size: 14px; }.notification-panel-heading > button { width: 25px; height: 25px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+.notification-list { border-top: 1px solid var(--line); }.notification-list > a { min-height: 62px; padding: 9px 2px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 34px minmax(0,1fr) 18px; align-items: center; gap: 10px; }.notification-list > a:hover { background: var(--hover); }.notification-list > a > span:nth-child(2) { min-width: 0; display: grid; gap: 4px; }.notification-list strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.notification-list small { color: var(--quiet); font-size: 8px; }.notification-list i { color: var(--lime); font-size: 10px; font-style: normal; }
+.notification-mark { width: 31px; height: 31px; border-radius: 10px; display: grid; place-items: center; background: var(--lime); color: #111; font-size: 9px; font-weight: 800; }
+.notification-empty { margin: 0; padding: 24px 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.5; text-align: center; }.notification-footnote { margin: 12px 2px 0; color: var(--quiet); font-size: 8px; line-height: 1.4; }
+.assignment-toast { min-width: 300px; padding: 14px 16px; border: 1px solid rgba(217,255,74,.35); border-radius: 17px; display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 11px; position: fixed; z-index: 100; right: 25px; bottom: 25px; background: #171817; color: white; box-shadow: 0 18px 55px rgba(0,0,0,.4); }.assignment-toast > span { width: 31px; height: 31px; border-radius: 10px; display: grid; place-items: center; background: var(--lime); color: #111; }.assignment-toast div { min-width: 0; }.assignment-toast strong { font-size: 10px; }.assignment-toast p { margin: 3px 0 0; overflow: hidden; color: #a3a59f; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }.assignment-toast a { color: var(--lime); font-size: 9px; font-weight: 750; }
 .page-content { padding: 44px 48px 58px; max-width: 1240px; margin: 0 auto; }
 .eyebrow { margin: 0 0 9px; color: var(--quiet); text-transform: uppercase; letter-spacing: .15em; font-size: 10px; font-weight: 750; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 35px; }
@@ -307,12 +316,14 @@ button { cursor: pointer; }
   .sidebar, .topbar { display: none; }
   .mobile-header { height: 67px; padding: 0 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; background: var(--header-bg); backdrop-filter: blur(15px); }
   .mobile-header .theme-toggle { width: 34px; height: 34px; }
+  .mobile-header .notification-bell { width: 34px; height: 34px; }
   .mobile-header .brand { font-size: 18px; }.mobile-header .brand-mark { width: 28px; height: 28px; }
   .page-content { padding: 29px 18px 100px; }
   .desktop-action { display: none; }
   .overview-grid, .create-layout, .detail-grid { grid-template-columns: 1fr; }
   .transaction-receipt { grid-template-columns: 42px minmax(0,1fr); }.receipt-actions { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
   .friendbot-content { grid-template-columns: 1fr; }.friendbot-action { width: 100%; }
+  .notification-panel { width: auto; position: fixed; top: 61px; left: 12px; right: 12px; }
   .guide-ready ul { grid-template-columns: 1fr; }
   .admin-metrics { grid-template-columns: repeat(2, 1fr); }
   .hero-card { min-height: 280px; }
@@ -349,6 +360,7 @@ button { cursor: pointer; }
   .share-strip { align-items: flex-start; gap: 16px; flex-direction: column; }.share-buttons { width: 100%; }.share-buttons > * { flex: 1; }
   .guide-heading { flex-direction: column; gap: 16px; }.guide-heading h1 { font-size: 48px; }.guide-steps { grid-template-columns: 1fr; }.guide-step { min-height: 170px; }.guide-ready { padding: 23px 19px; }.guide-actions { flex-direction: column; }.guide-actions .button { width: 100%; }
   .friendbot-card { padding: 22px 18px; }.friendbot-copy { flex-direction: column; }.friendbot-action { padding: 13px; }.friendbot-action .button { width: 100%; }
+  .header-actions { gap: 5px; }.mobile-header .wallet-chip { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.assignment-toast { min-width: 0; left: 14px; right: 14px; bottom: 20px; }
   .admin-gate { min-height: 65vh; padding: 8px; }.admin-gate h1 { font-size: 48px; }
   .admin-heading { align-items: flex-start; flex-direction: column; }.admin-heading h1 { font-size: 48px; }.admin-refresh { width: 100%; }
   .admin-metrics { gap: 8px; }.admin-metrics article { min-height: 140px; padding: 16px; border-radius: 18px; }.admin-metrics strong { font-size: 41px; }
