@@ -49,6 +49,7 @@ Payments move directly from the participant to the creator. The Split contract t
 - Check token balances before payment and distinguish insufficient funds from an unfunded wallet
 - Show wallet and transaction errors beside the action that needs attention
 - Limit the dashboard to Splits created by or assigned to the connected wallet
+- Give the approved admin Testnet wallet a contract-wide activity dashboard with all Splits and unique creator/participant wallets
 - Open a Split page without connecting a wallet
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress
@@ -63,7 +64,7 @@ Payments move directly from the participant to the creator. The Split contract t
 - Participants must provide wallet addresses before the creator creates a Split; self-join and claim links are future work.
 - Freighter requires the user to approve network changes inside the wallet; Split detects the change and reconnects automatically once Testnet is selected.
 - QR-code sharing is not implemented.
-- There is no built-in analytics dashboard or user identity system. Level 5 usage will be measured using unique participating wallet addresses, successful transactions, feedback responses, and analytics screenshots.
+- The admin dashboard reports current contract state and unique public wallet addresses; Split does not yet have an off-chain identity/signup system or a persistent transaction-event index.
 - USDC onboarding requires a Testnet asset balance and may require additional trustline guidance. XLM is the recommended asset for the first user cohort.
 
 ## Architecture

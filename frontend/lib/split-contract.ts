@@ -77,6 +77,10 @@ export type ParticipantShare = {
 
 export type NewParticipant = { address: string; displayName: string };
 
+export type SplitWithParticipants = SplitRecord & {
+  participants: ParticipantShare[];
+};
+
 const server = new rpc.Server(RPC_URL, { allowHttp: RPC_URL.startsWith("http:") });
 const contract = new Contract(CONTRACT_ID);
 
@@ -313,6 +317,20 @@ export async function getSplitsForWallet(wallet: string, limit = 50): Promise<Sp
   }));
 
   return visible.filter((record): record is SplitRecord => record !== null).reverse();
+}
+
+export async function getAllSplitsWithParticipants(): Promise<SplitWithParticipants[]> {
+  const count = await getSplitCount();
+  const splits = (await Promise.all(
+    Array.from({ length: count }, (_, splitId) => getSplit(splitId)),
+  )).filter((record): record is SplitRecord => record !== null);
+
+  const records = await Promise.all(splits.map(async (split) => ({
+    ...split,
+    participants: await getParticipants(split.id, 0, split.participantCount),
+  })));
+
+  return records.reverse();
 }
 
 export async function getTokenBalance(token: string, wallet: string): Promise<bigint> {
