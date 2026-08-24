@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 type AppShellProps = {
   children: ReactNode;
-  active?: "home" | "create";
+  active?: "home" | "create" | "onboarding";
 };
 
 function Logo() {
@@ -33,6 +33,9 @@ export function AppShell({ children, active }: AppShellProps) {
             <Link className={active === "create" ? "active" : ""} href="/split/create">
               <span>＋</span> Create split
             </Link>
+            <Link className={active === "onboarding" ? "active" : ""} href="/onboarding">
+              <span>?</span> Testnet guide
+            </Link>
             <Link href="/split/12"><span>◌</span> Activity</Link>
           </nav>
 
@@ -46,7 +49,7 @@ export function AppShell({ children, active }: AppShellProps) {
         <section className="app-main">
           <div className="mobile-header">
             <Link className="brand" href="/" aria-label="Split home"><Logo /><span>split</span></Link>
-            <div className="header-actions"><ThemeToggle /><WalletButton /></div>
+            <div className="header-actions"><Link className="mobile-guide-link" href="/onboarding" aria-label="Open Testnet setup guide">?</Link><ThemeToggle /><WalletButton /></div>
           </div>
           <div className="topbar">
             <p><span className="status-dot" /> Testnet</p>

@@ -124,7 +124,7 @@ export default function SplitDetailPage() {
         </section>
 
         <aside className="pay-card">
-          <div><span className="mini-kicker">{ownShare ? "Your turn" : "Direct payment"}</span><h2>{ownShare ? `Send ${ownShare.displayName || "your"} share` : address ? "You’re not in this split" : "Connect your wallet"}</h2><p>{symbol} goes directly to the Split creator. The contract never holds the funds.</p></div>
+          <div><span className="mini-kicker">{ownShare ? "Your turn" : "Direct payment"}</span><h2>{ownShare ? `Send ${ownShare.displayName || "your"} share` : address ? "You’re not in this split" : "Connect your wallet"}</h2><p>{symbol} goes directly to the Split creator. The contract never holds the funds.</p><Link className="pay-guide-link" href="/onboarding">First time here? Read the Testnet guide →</Link></div>
           <div className="pay-amount"><span>{symbol === "USDC" ? "$" : "✦"}</span><strong>{formatAmount(remainingShare)}</strong><small>{symbol}</small></div>
           <button className="button button-dark button-wide" type="button" disabled={transaction !== null || split.status !== "Active" || (!!ownShare && remainingShare <= 0n)} onClick={() => void pay()}>{transaction === "pay" ? "Confirming…" : !address ? "Connect to pay" : ownShare ? remainingShare > 0n ? "Pay remaining share" : "Share paid" : "Not a participant"} <span>→</span></button>
           <small className="network-note dark-note"><span className="status-dot" /> {address ? `Connected · ${shortAddress(address)}` : "Freighter · Stellar testnet"}</small>

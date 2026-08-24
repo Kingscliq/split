@@ -78,6 +78,11 @@ export default function CreateSplitPage() {
         <span className="step-pill">1 of 1</span>
       </div>
 
+      <div className="onboarding-callout">
+        <div><strong>New to Stellar Testnet?</strong><span>Set up Freighter and find your public wallet address before creating a Split.</span></div>
+        <Link href="/onboarding">Open the 3-minute guide <span>→</span></Link>
+      </div>
+
       <div className="create-layout">
         <section className="form-card">
           <div className="amount-stage">
