@@ -4,11 +4,16 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { TransactionReceipt, type ReceiptAction, type ReceiptData } from "@/components/TransactionReceipt";
-import { useWallet } from "@/contexts/WalletContext";
-import { closeSplit, formatAmount, getParticipants, getSplit, payShare, shortAddress, tokenSymbol, type ParticipantShare, type SplitRecord } from "@/lib/split-contract";
+import { FREIGHTER_INSTALL_URL, useWallet, type WalletIssue } from "@/contexts/WalletContext";
+import { closeSplit, formatAmount, getParticipants, getSplit, getTokenBalance, payShare, shortAddress, TOKEN_CONTRACTS, tokenSymbol, type ParticipantShare, type SplitRecord } from "@/lib/split-contract";
 
 const colors = ["pink", "blue", "orange", "lime"];
+type PayIssue = {
+  kind: "wallet_missing" | "wrong_network" | "funding" | "not_participant" | "transaction";
+  message: string;
+};
 
 export default function SplitDetailPage() {
   const params = useParams<{ id: string }>();
@@ -18,7 +23,9 @@ export default function SplitDetailPage() {
   const [split, setSplit] = useState<SplitRecord | null>(null);
   const [participants, setParticipants] = useState<ParticipantShare[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [payIssue, setPayIssue] = useState<PayIssue | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [transaction, setTransaction] = useState<"pay" | "close" | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [transactionReceipt, setTransactionReceipt] = useState<ReceiptData | null>(null);
@@ -32,14 +39,14 @@ export default function SplitDetailPage() {
   }, [searchParams]);
 
   const load = useCallback(async () => {
-    if (!Number.isInteger(splitId) || splitId < 0) { setError("That split ID is invalid."); setLoading(false); return; }
-    setLoading(true); setError(null);
+    if (!Number.isInteger(splitId) || splitId < 0) { setLoadError("That split ID is invalid."); setLoading(false); return; }
+    setLoading(true); setLoadError(null);
     try {
       const record = await getSplit(splitId);
       if (!record) throw new Error("This split was not found on the deployed contract.");
       const shares = await getParticipants(splitId, 0, record.participantCount);
       setSplit(record); setParticipants(shares);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load this split."); }
+    } catch (caught) { setLoadError(caught instanceof Error ? caught.message : "Could not load this split."); }
     finally { setLoading(false); }
   }, [splitId]);
 
@@ -49,6 +56,7 @@ export default function SplitDetailPage() {
   }, [load]);
 
   const ownShare = useMemo(() => participants.find((participant) => participant.participant === address) ?? null, [participants, address]);
+  const visibleParticipants = useMemo(() => ownShare ? [ownShare] : participants, [ownShare, participants]);
   const symbol = split ? tokenSymbol(split.token) : "TOKEN";
   const progress = split && split.totalAmount > 0n ? Number((split.totalPaid * 100n) / split.totalAmount) : 0;
   const paidCount = participants.filter((participant) => participant.status === "Paid").length;
@@ -62,25 +70,71 @@ export default function SplitDetailPage() {
   }
 
   async function pay() {
-    const payer = address ?? await connect();
-    if (!payer) return;
+    if (!split) return;
+    setPayIssue(null);
+    const connectionIssues: WalletIssue[] = [];
+    const payer = address ?? await connect((issue) => { connectionIssues.push(issue); });
+    const connectionIssue = connectionIssues[0];
+    if (!payer) {
+      if (connectionIssue) {
+        setPayIssue({
+          kind: connectionIssue.code === "missing" ? "wallet_missing" : connectionIssue.code === "wrong_network" ? "wrong_network" : "transaction",
+          message: connectionIssue.message,
+        });
+      }
+      return;
+    }
     const share = participants.find((participant) => participant.participant === payer);
-    if (!share) return setError("The connected wallet is not a participant in this split.");
+    if (!share) return setPayIssue({ kind: "not_participant", message: "This wallet is not assigned a share in this Split. Connect the participant wallet named by the organizer." });
     const remaining = share.amountOwed - share.amountPaid;
     if (remaining <= 0n) return;
-    setTransaction("pay"); setError(null);
-    try { const result = await payShare(splitId, payer, remaining); recordReceipt("pay", result.hash); await load(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "Payment failed."); }
+    setTransaction("pay");
+    try {
+      const assetBalance = await getTokenBalance(split.token, payer);
+      const xlmBalance = split.token === TOKEN_CONTRACTS.XLM
+        ? assetBalance
+        : await getTokenBalance(TOKEN_CONTRACTS.XLM, payer);
+
+      if (xlmBalance <= 0n) {
+        setPayIssue({ kind: "funding", message: "This wallet has no Testnet XLM yet. Fund it with Friendbot before paying." });
+        return;
+      }
+      if (assetBalance < remaining) {
+        setPayIssue({
+          kind: "funding",
+          message: `Insufficient ${symbol}: this wallet has ${formatAmount(assetBalance)} ${symbol} but needs ${formatAmount(remaining)} ${symbol}.`,
+        });
+        return;
+      }
+
+      const result = await payShare(splitId, payer, remaining);
+      recordReceipt("pay", result.hash);
+      await load();
+    }
+    catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Payment failed.";
+      setPayIssue({
+        kind: /no Testnet XLM|not enough|insufficient|fund/i.test(message) ? "funding" : "transaction",
+        message,
+      });
+    }
     finally { setTransaction(null); }
   }
 
   async function close() {
-    const creator = address ?? await connect();
-    if (!creator) return;
-    if (creator !== split?.creator) return setError("Only the creator can close this split.");
-    setTransaction("close"); setError(null);
+    if (!split) return;
+    setCloseError(null);
+    const connectionIssues: WalletIssue[] = [];
+    const creator = address ?? await connect((issue) => { connectionIssues.push(issue); });
+    const connectionIssue = connectionIssues[0];
+    if (!creator) {
+      if (connectionIssue) setCloseError(connectionIssue.message);
+      return;
+    }
+    if (creator !== split.creator) return setCloseError("Only the creator can close this split.");
+    setTransaction("close");
     try { const result = await closeSplit(splitId, creator); recordReceipt("close", result.hash); await load(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "Could not close the split."); }
+    catch (caught) { setCloseError(caught instanceof Error ? caught.message : "Could not close the split."); }
     finally { setTransaction(null); }
   }
 
@@ -114,14 +168,13 @@ export default function SplitDetailPage() {
   }
 
   if (loading) return <AppShell><div className="contract-state detail-state">Reading split #{splitId} from Stellar testnet…</div></AppShell>;
-  if (error && !split) return <AppShell><div className="contract-state detail-state error-state"><p>{error}</p><Link href="/">Back to dashboard</Link></div></AppShell>;
+  if (loadError && !split) return <AppShell><div className="contract-state detail-state error-state"><p>{loadError}</p><Link href="/">Back to dashboard</Link></div></AppShell>;
   if (!split) return null;
   const remainingShare = ownShare ? ownShare.amountOwed - ownShare.amountPaid : 0n;
 
   return (
     <AppShell>
-      <div className="detail-heading"><Link href="/" className="back-button" aria-label="Back to dashboard">←</Link><div className="detail-actions"><button type="button" aria-label={copyStatus === "copied" ? "Link copied" : "Copy link"} onClick={() => void copyLink()}>{copyStatus === "copied" ? "✓" : "↗"}</button>{address === split.creator && split.status === "Active" && <button type="button" onClick={() => void close()} disabled={transaction !== null} aria-label="Close split">{transaction === "close" ? "…" : "×"}</button>}</div></div>
-      {error && <div className="inline-contract-error" role="alert">{error}</div>}
+      <div className="detail-heading"><Link href="/" className="back-button" aria-label="Back to dashboard">←</Link><div className="detail-actions"><button type="button" aria-label={copyStatus === "copied" ? "Link copied" : "Copy link"} onClick={() => void copyLink()}>{copyStatus === "copied" ? "✓" : "↗"}</button>{address === split.creator && split.status === "Active" && <button type="button" onClick={() => void close()} disabled={transaction !== null} aria-label="Close split">{transaction === "close" ? "…" : "×"}</button>}{closeError && <span className="detail-action-error" role="alert">{closeError}</span>}</div></div>
       {(transactionReceipt ?? queryReceipt) && <TransactionReceipt {...(transactionReceipt ?? queryReceipt)!} />}
 
       <section className="detail-hero lime-card">
@@ -134,10 +187,10 @@ export default function SplitDetailPage() {
 
       <div className="detail-grid">
         <section className="people-card">
-          <div className="section-heading compact"><div><p className="eyebrow">The group</p><h2>Who has paid?</h2></div><span className="pill pill-muted">{paidCount} of {participants.length} paid</span></div>
-          <div className="status-list">{participants.map((person, index) => <div className="status-row" key={person.participant}>
+          <div className="section-heading compact"><div><p className="eyebrow">{ownShare ? "Your payment" : "The group"}</p><h2>{ownShare ? "Your assigned share" : "Who has paid?"}</h2></div><span className="pill pill-muted">{ownShare ? ownShare.status : `${paidCount} of ${participants.length} paid`}</span></div>
+          <div className="status-list">{visibleParticipants.map((person, index) => <div className={`status-row ${person.participant === address ? "current-wallet" : ""}`} key={person.participant}>
             <span className={`avatar avatar-${colors[index % colors.length]}`}>{person.displayName.slice(0, 1).toUpperCase() || "?"}</span>
-            <div><strong>{person.displayName || "Unnamed"}</strong><span title={person.participant}>{shortAddress(person.participant)}</span></div>
+            <div><strong>{person.displayName || "Unnamed"}{person.participant === address ? " · You" : ""}</strong><CopyAddressButton address={person.participant} /></div>
             <div className="status-amount"><strong>{formatAmount(person.amountPaid)} / {formatAmount(person.amountOwed)}</strong><span>{symbol}</span></div>
             <span className={`status-badge ${person.status.toLowerCase()}`}>{person.status === "Paid" ? "✓ " : ""}{person.status}</span>
           </div>)}</div>
@@ -146,7 +199,8 @@ export default function SplitDetailPage() {
         <aside className="pay-card">
           <div><span className="mini-kicker">{ownShare ? "Your turn" : "Direct payment"}</span><h2>{ownShare ? `Send ${ownShare.displayName || "your"} share` : address ? "You’re not in this split" : "Connect your wallet"}</h2><p>{symbol} goes directly to the Split creator. The contract never holds the funds.</p><Link className="pay-guide-link" href="/onboarding">First time here? Read the Testnet guide →</Link></div>
           <div className="pay-amount"><span>{symbol === "USDC" ? "$" : "✦"}</span><strong>{formatAmount(remainingShare)}</strong><small>{symbol}</small></div>
-          <button className="button button-dark button-wide" type="button" disabled={transaction !== null || split.status !== "Active" || (!!ownShare && remainingShare <= 0n)} onClick={() => void pay()}>{transaction === "pay" ? "Confirming…" : !address ? "Connect to pay" : ownShare ? remainingShare > 0n ? "Pay remaining share" : "Share paid" : "Not a participant"} <span>→</span></button>
+          <button className="button button-dark button-wide" type="button" disabled={transaction !== null || split.status !== "Active" || (!!ownShare && remainingShare <= 0n)} onClick={() => void pay()}>{transaction === "pay" ? "Checking balance…" : !address ? "Connect to pay" : ownShare ? remainingShare > 0n ? "Pay remaining share" : "Share paid" : "Check connected wallet"} <span>→</span></button>
+          {payIssue && <div className={`pay-action-error ${payIssue.kind}`} role="alert"><strong>{payIssue.kind === "funding" ? "Wallet needs funds" : payIssue.kind === "not_participant" ? "Wrong wallet connected" : "Payment needs attention"}</strong><span>{payIssue.message}</span><div>{payIssue.kind === "wallet_missing" && <a href={FREIGHTER_INSTALL_URL} target="_blank" rel="noreferrer">Install Freighter ↗</a>}{payIssue.kind === "wrong_network" && <button type="button" onClick={() => void connect()} disabled={transaction !== null}>Check Testnet again</button>}{payIssue.kind === "funding" && <Link href="/onboarding#fund-testnet-wallet">Fund wallet with Friendbot →</Link>}{payIssue.kind === "transaction" && <button type="button" onClick={() => void pay()} disabled={transaction !== null}>{address ? "Try payment again" : "Try wallet connection again"}</button>}</div></div>}
           <small className="network-note dark-note"><span className="status-dot" /> {address ? `Connected · ${shortAddress(address)}` : "Freighter · Stellar testnet"}</small>
         </aside>
       </div>

@@ -36,7 +36,7 @@ export function AppShell({ children, active }: AppShellProps) {
             <Link className={active === "onboarding" ? "active" : ""} href="/onboarding">
               <span>?</span> Testnet guide
             </Link>
-            <Link href="/split/12"><span>◌</span> Activity</Link>
+            <Link href="/#your-splits"><span>◌</span> Your splits</Link>
           </nav>
 
           <div className="sidebar-note">
