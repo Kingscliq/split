@@ -43,6 +43,7 @@ Payments move directly from the participant to the creator. The Split contract t
 - Connect and sign transactions with Freighter
 - Follow an in-app Testnet wallet setup and safety guide
 - Fund a connected Testnet wallet with Stellar Friendbot
+- View and copy confirmed transaction receipts with Stellar Expert links
 - Open a Split page without connecting a wallet
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress

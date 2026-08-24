@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { TransactionReceipt, type ReceiptAction, type ReceiptData } from "@/components/TransactionReceipt";
 import { useWallet } from "@/contexts/WalletContext";
 import { closeSplit, formatAmount, getParticipants, getSplit, payShare, shortAddress, tokenSymbol, type ParticipantShare, type SplitRecord } from "@/lib/split-contract";
 
@@ -11,6 +12,7 @@ const colors = ["pink", "blue", "orange", "lime"];
 
 export default function SplitDetailPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const splitId = Number(params.id);
   const { address, connect } = useWallet();
   const [split, setSplit] = useState<SplitRecord | null>(null);
@@ -19,6 +21,15 @@ export default function SplitDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [transaction, setTransaction] = useState<"pay" | "close" | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [transactionReceipt, setTransactionReceipt] = useState<ReceiptData | null>(null);
+
+  const queryReceipt = useMemo<ReceiptData | null>(() => {
+    const hash = searchParams.get("tx");
+    const action = searchParams.get("action");
+    if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) return null;
+    if (action !== "create" && action !== "pay" && action !== "close") return null;
+    return { action, hash };
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     if (!Number.isInteger(splitId) || splitId < 0) { setError("That split ID is invalid."); setLoading(false); return; }
@@ -42,6 +53,14 @@ export default function SplitDetailPage() {
   const progress = split && split.totalAmount > 0n ? Number((split.totalPaid * 100n) / split.totalAmount) : 0;
   const paidCount = participants.filter((participant) => participant.status === "Paid").length;
 
+  function recordReceipt(action: ReceiptAction, hash: string) {
+    setTransactionReceipt({ action, hash });
+    const url = new URL(window.location.href);
+    url.searchParams.set("action", action);
+    url.searchParams.set("tx", hash);
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+  }
+
   async function pay() {
     const payer = address ?? await connect();
     if (!payer) return;
@@ -50,7 +69,7 @@ export default function SplitDetailPage() {
     const remaining = share.amountOwed - share.amountPaid;
     if (remaining <= 0n) return;
     setTransaction("pay"); setError(null);
-    try { await payShare(splitId, payer, remaining); await load(); }
+    try { const result = await payShare(splitId, payer, remaining); recordReceipt("pay", result.hash); await load(); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Payment failed."); }
     finally { setTransaction(null); }
   }
@@ -60,7 +79,7 @@ export default function SplitDetailPage() {
     if (!creator) return;
     if (creator !== split?.creator) return setError("Only the creator can close this split.");
     setTransaction("close"); setError(null);
-    try { await closeSplit(splitId, creator); await load(); }
+    try { const result = await closeSplit(splitId, creator); recordReceipt("close", result.hash); await load(); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not close the split."); }
     finally { setTransaction(null); }
   }
@@ -103,6 +122,7 @@ export default function SplitDetailPage() {
     <AppShell>
       <div className="detail-heading"><Link href="/" className="back-button" aria-label="Back to dashboard">←</Link><div className="detail-actions"><button type="button" aria-label={copyStatus === "copied" ? "Link copied" : "Copy link"} onClick={() => void copyLink()}>{copyStatus === "copied" ? "✓" : "↗"}</button>{address === split.creator && split.status === "Active" && <button type="button" onClick={() => void close()} disabled={transaction !== null} aria-label="Close split">{transaction === "close" ? "…" : "×"}</button>}</div></div>
       {error && <div className="inline-contract-error" role="alert">{error}</div>}
+      {(transactionReceipt ?? queryReceipt) && <TransactionReceipt {...(transactionReceipt ?? queryReceipt)!} />}
 
       <section className="detail-hero lime-card">
         <span className="pill pill-dark">{split.status} split</span>

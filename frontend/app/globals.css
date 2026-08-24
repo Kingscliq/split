@@ -203,6 +203,10 @@ button { cursor: pointer; }
 .contract-state.detail-state { min-height: 55vh; }
 .error-state { color: #ff91b5; }
 .inline-contract-error { margin: 0 0 14px; padding: 11px 14px; border: 1px solid rgba(255,93,147,.25); border-radius: 12px; background: rgba(255,93,147,.08); color: #ff9cbc; font-size: 10px; }
+.transaction-receipt { margin: 0 0 20px; padding: 20px; border: 1px solid rgba(217,255,74,.34); border-radius: 20px; display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 15px; background: rgba(217,255,74,.08); }
+.receipt-check { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--lime); color: #111; font-size: 18px; font-weight: 850; }
+.receipt-copy { min-width: 0; }.receipt-copy .eyebrow { margin-bottom: 4px; color: var(--lime); }.receipt-copy h2 { margin: 0; font-size: 17px; letter-spacing: -.035em; }.receipt-copy > p:not(.eyebrow) { margin: 5px 0 9px; color: var(--muted); font-size: 9px; line-height: 1.45; }.receipt-copy code { display: block; max-width: 520px; overflow: hidden; color: var(--quiet); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.receipt-actions { min-width: 180px; display: grid; gap: 7px; }.receipt-actions a, .receipt-actions button { min-height: 38px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: transparent; color: var(--control-text); font-size: 9px; font-weight: 700; }.receipt-actions a { border-color: var(--lime); color: var(--lime); }.receipt-actions button.copied { border-color: var(--lime); color: var(--lime); }.receipt-actions button.failed { border-color: var(--pink); color: var(--pink); }
 .network-note { display: block; margin-top: 14px; text-align: center; color: rgba(0,0,0,.52); font-size: 8px; }.network-note .status-dot { background: #111; box-shadow: none; margin-right: 5px; }
 .onboarding-callout { margin: -10px 0 20px; padding: 15px 18px; border: 1px solid rgba(145,200,255,.28); border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: rgba(145,200,255,.07); }
 .onboarding-callout > div { display: grid; gap: 4px; }.onboarding-callout strong { font-size: 11px; }.onboarding-callout span { color: var(--muted); font-size: 9px; }
@@ -273,6 +277,7 @@ button { cursor: pointer; }
   .page-content { padding: 29px 18px 100px; }
   .desktop-action { display: none; }
   .overview-grid, .create-layout, .detail-grid { grid-template-columns: 1fr; }
+  .transaction-receipt { grid-template-columns: 42px minmax(0,1fr); }.receipt-actions { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
   .friendbot-content { grid-template-columns: 1fr; }.friendbot-action { width: 100%; }
   .guide-ready ul { grid-template-columns: 1fr; }
   .hero-card { min-height: 280px; }
@@ -295,6 +300,7 @@ button { cursor: pointer; }
   .section-block { margin-top: 38px; }.section-heading h2 { font-size: 20px; }
   .split-total strong { font-size: 11px; }.split-copy strong { font-size: 12px; }
   .two-column-fields { grid-template-columns: 1fr; }
+  .transaction-receipt { padding: 18px 16px; align-items: flex-start; }.receipt-copy code { max-width: 245px; }.receipt-actions { grid-template-columns: 1fr; }.receipt-actions a, .receipt-actions button { width: 100%; }
   .onboarding-callout { align-items: flex-start; flex-direction: column; gap: 10px; }
   .form-card { margin: 0 -8px; border-radius: 23px; }
   .amount-stage { padding: 29px 18px; }.form-section { padding: 21px 18px; }

@@ -14,6 +14,7 @@ import { signTransaction } from "@stellar/freighter-api";
 
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
 export const NETWORK_NAME = "TESTNET";
+export const STELLAR_EXPERT_TESTNET_URL = "https://stellar.expert/explorer/testnet";
 
 function requiredEnv(name: string, value: string | undefined): string {
   const normalized = value?.trim();
@@ -251,6 +252,10 @@ export function formatAmount(value: bigint, maximumFractionDigits = 2): string {
 
 export function shortAddress(address: string): string {
   return address.length > 12 ? `${address.slice(0, 5)}…${address.slice(-4)}` : address;
+}
+
+export function transactionExplorerUrl(hash: string): string {
+  return `${STELLAR_EXPERT_TESTNET_URL}/tx/${encodeURIComponent(hash)}`;
 }
 
 export async function getSplitCount(): Promise<number> {

@@ -62,7 +62,8 @@ export default function CreateSplitPage() {
         totalAmount: math.finalUnits,
         participants: participants.map((participant) => ({ address: participant.address.trim(), displayName: participant.name.trim() })),
       });
-      router.push(`/split/${Number(result.value)}`);
+      const receipt = new URLSearchParams({ action: "create", tx: result.hash });
+      router.push(`/split/${Number(result.value)}?${receipt.toString()}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not create the split.");
     } finally {
