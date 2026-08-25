@@ -11,6 +11,10 @@ const themeScript = `(function(){try{var saved=localStorage.getItem("split-theme
 export const metadata: Metadata = {
   title: "Split — Group payments without the chase",
   description: "Create a group payment, share the link, and see who has paid on Stellar.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

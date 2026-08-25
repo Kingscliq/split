@@ -51,6 +51,7 @@ Payments move directly from the participant to the creator. The Split contract t
 - Limit the dashboard to Splits created by or assigned to the connected wallet
 - Give the approved admin Testnet wallet a contract-wide activity dashboard with all Splits and unique creator/participant wallets
 - Notify connected participants about assigned Splits with an unread badge, recent-assignment panel, and in-app live toast
+- Persist contract events and transaction hashes through a Supabase event indexer, with a permanent activity timeline on each Split page
 - Open a Split page without connecting a wallet
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress
@@ -94,6 +95,7 @@ Stellar Testnet RPC ---- Soroban Split contract
 | Contract | Rust and Soroban SDK | Split validation, participant state, payments, status, and events |
 | Assets | Native XLM SAC and configured USDC SAC | Direct participant-to-creator settlement |
 | Hosting | Vercel | Web application deployment |
+| Event index | Supabase Edge Functions, Cron, and Postgres | Durable transaction history and Explorer links |
 
 More detail is available in [docs/architecture-overview.md](docs/architecture-overview.md) and [contracts/split_contract/SPEC.md](contracts/split_contract/SPEC.md).
 
@@ -140,6 +142,8 @@ NEXT_PUBLIC_USDC_TOKEN_CONTRACT=<verified-testnet-usdc-sac-contract-id>
 ```
 
 Never commit secret keys or wallet seed phrases. All `NEXT_PUBLIC_*` values are embedded in the browser bundle and must contain public configuration only.
+
+The durable event-history infrastructure is defined in [`supabase/`](supabase/). Follow the [Supabase indexer setup guide](docs/SUPABASE_INDEXER_SETUP.md) to apply the migration, deploy the Edge Function, schedule ingestion, and configure Vercel. The service-role key and indexer secret must remain server-side.
 
 ### Contract validation
 

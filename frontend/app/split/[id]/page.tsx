@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
+import { SplitActivityTimeline } from "@/components/SplitActivityTimeline";
 import { TransactionReceipt, type ReceiptAction, type ReceiptData } from "@/components/TransactionReceipt";
 import { FREIGHTER_INSTALL_URL, useWallet, type WalletIssue } from "@/contexts/WalletContext";
 import { closeSplit, formatAmount, getParticipants, getSplit, getTokenBalance, payShare, shortAddress, TOKEN_CONTRACTS, tokenSymbol, type ParticipantShare, type SplitRecord } from "@/lib/split-contract";
@@ -204,6 +205,8 @@ export default function SplitDetailPage() {
           <small className="network-note dark-note"><span className="status-dot" /> {address ? `Connected · ${shortAddress(address)}` : "Freighter · Stellar testnet"}</small>
         </aside>
       </div>
+
+      <SplitActivityTimeline splitId={split.id} symbol={symbol} />
 
       <section className="share-strip"><div><span className="share-icon">↗</span><div><strong>Bring everyone in</strong><p>Share this split with the group.</p></div></div><div className="share-buttons"><button type="button" className={copyStatus === "copied" ? "copy-success" : copyStatus === "failed" ? "copy-failed" : ""} onClick={() => void copyLink()}>{copyStatus === "copied" ? "✓ Copied" : copyStatus === "failed" ? "Copy failed" : "Copy link"}</button><button className="whatsapp" type="button" aria-label="Share this split on WhatsApp" onClick={shareOnWhatsApp}><svg aria-hidden="true" viewBox="0 0 32 32"><path fill="currentColor" d="M16.04 3A12.9 12.9 0 0 0 5.1 22.73L3.4 29l6.42-1.68A12.98 12.98 0 1 0 16.04 3Zm0 23.77c-2.12 0-4.2-.58-6-1.68l-.43-.25-3.81 1 1.02-3.71-.28-.45a10.74 10.74 0 1 1 9.5 5.09Zm5.9-8.05c-.32-.16-1.92-.95-2.22-1.06-.3-.1-.51-.16-.73.16-.21.32-.83 1.06-1.02 1.28-.19.21-.38.24-.7.08-.33-.16-1.37-.5-2.6-1.6a9.73 9.73 0 0 1-1.8-2.23c-.2-.32-.02-.5.14-.66.15-.14.33-.37.49-.56.16-.19.21-.32.32-.54.1-.21.05-.4-.03-.56-.08-.16-.73-1.75-1-2.4-.26-.63-.53-.54-.73-.55h-.62c-.22 0-.57.08-.87.4-.3.33-1.13 1.11-1.13 2.7 0 1.6 1.16 3.14 1.32 3.36.16.21 2.28 3.48 5.53 4.89.77.33 1.37.53 1.84.68.78.24 1.48.21 2.04.13.62-.09 1.92-.79 2.2-1.54.26-.76.26-1.41.18-1.54-.08-.14-.3-.22-.62-.38Z"/></svg><span>Share on WhatsApp</span></button></div></section>
     </AppShell>

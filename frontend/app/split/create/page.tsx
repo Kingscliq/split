@@ -49,7 +49,7 @@ export default function CreateSplitPage() {
     setError(null);
     if (!math.even) return setError("The final amount must split equally between every participant.");
     if (!title.trim()) return setError("Add a title for this split.");
-    if (participants.some((participant) => !participant.name.trim() || !participant.address.trim())) return setError("Add a name and wallet address for every participant.");
+    if (participants.some((participant) => !participant.address.trim() || !participant.name.trim())) return setError("Add a wallet address and display name for every participant.");
     const creator = address ?? await connect();
     if (!creator) return;
     setSubmitting(true);
@@ -109,7 +109,16 @@ export default function CreateSplitPage() {
             <div className="participant-editor">
               {participants.map((participant, index) => <div className="participant-edit-row" key={index}>
                 <span className={`avatar avatar-${participant.color}`}>{participant.name.slice(0, 1).toUpperCase() || index + 1}</span>
-                <div><input aria-label={`Participant ${index + 1} name`} placeholder="Name" maxLength={40} value={participant.name} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} /><input className="address-input" aria-label={`Participant ${index + 1} wallet address`} placeholder="G… wallet address" value={participant.address} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item))} /></div>
+                <div className="participant-fields">
+                  <div className="participant-field participant-field-primary">
+                    <label htmlFor={`participant-${index}-address`}>Wallet address <span>Required</span></label>
+                    <input id={`participant-${index}-address`} className="address-input" placeholder="Paste public G… address" value={participant.address} autoComplete="off" spellCheck={false} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item))} />
+                  </div>
+                  <div className="participant-field participant-field-secondary">
+                    <label htmlFor={`participant-${index}-name`}>Display name</label>
+                    <input id={`participant-${index}-name`} className="name-input" placeholder="e.g. Favour" maxLength={40} value={participant.name} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} />
+                  </div>
+                </div>
                 <strong>{math.each.toFixed(2)} <span>{token}</span></strong>
                 <button className="remove-person" type="button" onClick={() => removeParticipant(index)} disabled={participants.length === 1} aria-label={`Remove participant ${index + 1}`}>×</button>
               </div>)}

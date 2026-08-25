@@ -1,0 +1,4 @@
+project_id = "split"
+
+[functions.index-split-events]
+verify_jwt = false
