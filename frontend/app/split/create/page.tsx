@@ -14,8 +14,8 @@ export default function CreateSplitPage() {
   const router = useRouter();
   const { address, connect } = useWallet();
   const [token, setToken] = useState<TokenSymbol>("XLM");
-  const [requested, setRequested] = useState("0");
-  const [finalAmount, setFinalAmount] = useState("0");
+  const [requested, setRequested] = useState("");
+  const [finalAmount, setFinalAmount] = useState("");
   const [title, setTitle] = useState("");
   const [participants, setParticipants] = useState<Participant[]>([{ name: "", address: "", color: "pink" }]);
   const [submitting, setSubmitting] = useState(false);
@@ -87,9 +87,9 @@ export default function CreateSplitPage() {
       <div className="create-layout">
         <section className="form-card">
           <div className="amount-stage">
-            <label htmlFor="requested">How much do you want to collect from others?</label>
-            <div className="amount-input-wrap"><span>{token === "USDC" ? "$" : "✦"}</span><input id="requested" inputMode="decimal" value={requested} onChange={(event) => { setRequested(event.target.value); setFinalAmount(event.target.value); }} aria-describedby="amount-help" /></div>
-            <p id="amount-help">Do not include your own share.</p>
+            <label htmlFor="requested"><strong>Collection amount</strong><span>How much do you want to collect from others?</span></label>
+            <div className="amount-input-wrap"><span aria-hidden="true">{token === "USDC" ? "$" : "✦"}</span><input id="requested" inputMode="decimal" value={requested} placeholder="0.00" autoFocus onChange={(event) => { setRequested(event.target.value); setFinalAmount(event.target.value); }} aria-label={`Collection amount in ${token}`} aria-describedby="amount-help" /><b>{token}</b></div>
+            <p id="amount-help">Enter the total others are paying back. Do not include your own share.</p>
           </div>
 
           <div className="form-section">
@@ -101,7 +101,7 @@ export default function CreateSplitPage() {
             <div><span className="field-label">Get paid in</span><div className="segment-control" aria-label="Settlement token">
               {(["XLM", "USDC"] as const).map((option) => <button className={token === option ? "selected" : ""} onClick={() => setToken(option)} type="button" key={option}><span className={`token-dot ${option.toLowerCase()}`}>{option === "USDC" ? "$" : "✦"}</span>{option}</button>)}
             </div></div>
-            <div><label className="field-label" htmlFor="final-amount">Final split amount</label><div className="compact-input"><input id="final-amount" inputMode="decimal" value={finalAmount} onChange={(event) => setFinalAmount(event.target.value)} /><span>{token}</span></div></div>
+            <div><label className="field-label" htmlFor="final-amount">Final split amount</label><div className="compact-input"><input id="final-amount" inputMode="decimal" value={finalAmount} placeholder="0.00" onChange={(event) => setFinalAmount(event.target.value)} /><span>{token}</span></div></div>
           </div>
 
           <div className="form-section participants-section">

@@ -2,13 +2,40 @@
 
 import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { FREIGHTER_INSTALL_URL, useWallet } from "@/contexts/WalletContext";
+import { shortAddress } from "@/lib/split-contract";
+
+export function DisconnectWalletButton({ className = "" }: { className?: string }) {
+  const { address, disconnect } = useWallet();
+  if (!address) return null;
+
+  return (
+    <button className={`wallet-disconnect ${className}`.trim()} type="button" onClick={disconnect}>
+      <span aria-hidden="true">↪</span> Disconnect wallet
+    </button>
+  );
+}
 
 export function WalletButton() {
   const { address, connecting, issue, connect } = useWallet();
   return (
     <div className="wallet-control">
       {address ? (
-        <CopyAddressButton address={address} className="wallet-chip" />
+        <details className="wallet-menu">
+          <summary className="wallet-chip" title={address} aria-label={`Connected wallet ${address}. Open wallet menu`}>
+            <span className="wallet-orb" />
+            <span>{shortAddress(address)}</span>
+            <i aria-hidden="true">⌄</i>
+          </summary>
+          <div className="wallet-menu-panel">
+            <div className="wallet-menu-heading">
+              <span>Connected on Testnet</span>
+              <strong>{shortAddress(address)}</strong>
+            </div>
+            <CopyAddressButton address={address} label="Copy wallet address" />
+            <DisconnectWalletButton />
+            <small>This disconnects the wallet from Split only.</small>
+          </div>
+        </details>
       ) : (
         <button className="wallet-chip" type="button" onClick={() => void connect()} disabled={connecting}>
           <span className="wallet-orb" />
