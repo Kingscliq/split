@@ -1,10 +1,28 @@
 "use client";
 
 import { getAddress, getNetworkDetails, isAllowed, isConnected, requestAccess, WatchWalletChanges } from "@stellar/freighter-api";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NETWORK_PASSPHRASE } from "@/lib/split-contract";
 
 export const FREIGHTER_INSTALL_URL = "https://www.freighter.app/";
+const WALLET_DISCONNECTED_KEY = "split-wallet-disconnected";
+
+function rememberDisconnected(disconnected: boolean) {
+  try {
+    if (disconnected) window.localStorage.setItem(WALLET_DISCONNECTED_KEY, "true");
+    else window.localStorage.removeItem(WALLET_DISCONNECTED_KEY);
+  } catch {
+    // The in-memory state still works when browser storage is unavailable.
+  }
+}
+
+function wasDisconnected() {
+  try {
+    return window.localStorage.getItem(WALLET_DISCONNECTED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 
 export type WalletIssue = {
   code: "missing" | "wrong_network" | "access" | "unknown";
@@ -17,6 +35,7 @@ type WalletContextValue = {
   error: string | null;
   issue: WalletIssue | null;
   connect: (onError?: (issue: WalletIssue) => void) => Promise<string | null>;
+  disconnect: () => void;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -26,8 +45,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issue, setIssue] = useState<WalletIssue | null>(null);
+  const manuallyDisconnected = useRef(false);
 
   const connect = useCallback(async (onError?: (issue: WalletIssue) => void) => {
+    manuallyDisconnected.current = false;
+    rememberDisconnected(false);
     setConnecting(true);
     setError(null);
     setIssue(null);
@@ -76,16 +98,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const disconnect = useCallback(() => {
+    manuallyDisconnected.current = true;
+    rememberDisconnected(true);
+    setAddress(null);
+    setError(null);
+    setIssue(null);
+    setConnecting(false);
+  }, []);
+
   useEffect(() => {
     let watcher: WatchWalletChanges | null = null;
     let disposed = false;
 
     void (async () => {
+      manuallyDisconnected.current = wasDisconnected();
       const installed = await isConnected();
       if (!installed.isConnected || disposed) return;
       const permission = await isAllowed();
       if (disposed) return;
-      if (permission.isAllowed) {
+      if (permission.isAllowed && !manuallyDisconnected.current) {
         const current = await getAddress();
         const network = await getNetworkDetails();
         if (!current.error && !network.error && network.networkPassphrase === NETWORK_PASSPHRASE) {
@@ -97,7 +129,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // this detects account/network changes without another page refresh.
       watcher = new WatchWalletChanges(1200);
       watcher.watch((wallet) => {
-        if (disposed || wallet.error) return;
+        if (disposed || wallet.error || manuallyDisconnected.current) return;
         if (wallet.address && wallet.networkPassphrase === NETWORK_PASSPHRASE) {
           setAddress(wallet.address);
           setError(null);
@@ -122,7 +154,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = useMemo(() => ({ address, connecting, error, issue, connect }), [address, connecting, error, issue, connect]);
+  const value = useMemo(
+    () => ({ address, connecting, error, issue, connect, disconnect }),
+    [address, connecting, error, issue, connect, disconnect],
+  );
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 

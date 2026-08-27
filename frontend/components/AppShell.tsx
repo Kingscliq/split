@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AdminNavLink } from "@/components/AdminNavLink";
 import { NotificationBell, NotificationProvider } from "@/components/NotificationCenter";
-import { WalletButton } from "@/components/WalletButton";
+import { DisconnectWalletButton, WalletButton } from "@/components/WalletButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 type AppShellProps = {
@@ -42,10 +42,13 @@ export function AppShell({ children, active }: AppShellProps) {
             <AdminNavLink active={active === "admin"} />
           </nav>
 
-          <div className="sidebar-note">
-            <span className="status-dot" />
-            <p>Stellar testnet</p>
-            <small>Payments settle on-chain</small>
+          <div className="sidebar-footer">
+            <div className="sidebar-note">
+              <span className="status-dot" />
+              <p>Stellar testnet</p>
+              <small>Payments settle on-chain</small>
+            </div>
+            <DisconnectWalletButton className="sidebar-disconnect" />
           </div>
         </aside>
 

@@ -11,7 +11,7 @@ Split is currently a **Stellar Testnet MVP** and is being prepared for the Rise 
 | Resource | Link | Status |
 | --- | --- | --- |
 | Source code | [github.com/Kingscliq/split](https://github.com/Kingscliq/split) | Public |
-| Web application | [split-zeta-six.vercel.app](https://split-zeta-six.vercel.app/) | Live and publicly accessible |
+| Web application | [split-zig.vercel.app](https://split-zig.vercel.app/) | Live and publicly accessible |
 | Testnet contract | [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAMQBDU43E2QJSOLKSMPRK4NIO73RRPPRVMSZGNNQEPOJVHJM674KECL) | Deployed |
 | User feedback form | Not published yet | Required for Level 5 |
 | Feedback response spreadsheet | Not published yet | Required for Level 5 |
@@ -306,7 +306,7 @@ Status as of 2026-08-24:
 | Requirement | Current evidence | Status |
 | --- | --- | --- |
 | Public GitHub repository | [Kingscliq/split](https://github.com/Kingscliq/split) | Complete |
-| Live public application | [split-zeta-six.vercel.app](https://split-zeta-six.vercel.app/) returns the public Split application without authentication | Complete |
+| Live public application | [split-zig.vercel.app](https://split-zig.vercel.app/) returns the public Split application without authentication | Complete |
 | 50+ Testnet users | No 50-user evidence package exists yet | Pending |
 | Real transaction activity | One active Split is readable on Testnet; signed payment evidence is not documented | Pending |
 | Active usage proof | No analytics or activity screenshots are stored in the repository | Pending |
