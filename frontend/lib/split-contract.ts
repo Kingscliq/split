@@ -157,7 +157,12 @@ async function buildInvocation(source: string, method: string, args: xdr.ScVal[]
     .build();
 }
 
-async function readFrom(target: Contract, method: string, args: xdr.ScVal[] = []) {
+async function readFrom(
+  target: Contract,
+  method: string,
+  args: xdr.ScVal[] = [],
+  mapError: (error: unknown) => Error = contractError,
+) {
   try {
     // Read-only simulations do not consume sequence numbers, so the source only
     // needs to be a valid public key; it does not need to remain funded.
@@ -173,7 +178,7 @@ async function readFrom(target: Contract, method: string, args: xdr.ScVal[] = []
     if (!simulation.result) throw new Error("The contract returned no result.");
     return scValToNative(simulation.result.retval);
   } catch (error) {
-    throw contractError(error);
+    throw mapError(error);
   }
 }
 
@@ -255,7 +260,7 @@ export function toBaseUnits(value: string): bigint {
 }
 
 export function formatAmount(value: bigint, maximumFractionDigits = 2): string {
-  return (Number(value) / 10_000_000).toLocaleString(undefined, {
+  return (Number(value) / 10_000_000).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits,
   });
@@ -334,8 +339,21 @@ export async function getAllSplitsWithParticipants(): Promise<SplitWithParticipa
 }
 
 export async function getTokenBalance(token: string, wallet: string): Promise<bigint> {
-  const value = await readFrom(new Contract(token), "balance", [new Address(wallet).toScVal()]);
-  return BigInt(value ?? 0);
+  try {
+    const value = await readFrom(
+      new Contract(token),
+      "balance",
+      [new Address(wallet).toScVal()],
+      (error) => error instanceof Error ? error : new Error(String(error)),
+    );
+    return BigInt(value ?? 0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Classic-asset SAC contracts report a missing trustline as a contract
+    // error. For a balance display, that is equivalent to holding zero.
+    if (/trustline entry is missing/i.test(message)) return 0n;
+    throw error;
+  }
 }
 
 function participantScVal(participant: NewParticipant) {

@@ -4,6 +4,7 @@ import { AdminNavLink } from "@/components/AdminNavLink";
 import { NotificationBell, NotificationProvider } from "@/components/NotificationCenter";
 import { DisconnectWalletButton, WalletButton } from "@/components/WalletButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { VersionSwitcher } from "@/components/VersionSwitcher";
 
 type AppShellProps = {
   children: ReactNode;
@@ -27,6 +28,7 @@ export function AppShell({ children, active }: AppShellProps) {
             <Logo />
             <span>split</span>
           </Link>
+          <VersionSwitcher />
 
           <nav className="desktop-nav" aria-label="Primary navigation">
             <Link className={active === "home" ? "active" : ""} href="/">
@@ -54,7 +56,7 @@ export function AppShell({ children, active }: AppShellProps) {
 
         <section className="app-main">
           <div className="mobile-header">
-            <Link className="brand" href="/" aria-label="Split home"><Logo /><span>split</span></Link>
+            <div className="mobile-brand-group"><Link className="brand" href="/" aria-label="Split home"><Logo /><span>split</span></Link><VersionSwitcher compact /></div>
             <div className="header-actions"><AdminNavLink compact /><NotificationBell /><Link className="mobile-guide-link" href="/onboarding" aria-label="Open Testnet setup guide">?</Link><ThemeToggle /><WalletButton /></div>
           </div>
           <div className="topbar">

@@ -70,10 +70,11 @@ This is future scope because it requires claim ownership rules, correction/reass
 
 ### View a Split
 
-1. Any user opens `/split/[id]`.
-2. Page loads Split summary and bounded participant rows from the contract.
-3. Page shows total expected, total paid, remaining amount, status, and paid/pending participant rows.
-4. Page can be read without wallet connection.
+1. A user opens `/split/[id]` and connects a Stellar wallet.
+2. Page loads the Split and bounded participant rows from the contract to verify membership.
+3. The creator or an assigned participant can view the applicable Split details.
+4. An unrelated wallet sees no Split details and is offered an action to create a new Split.
+5. This is a frontend access rule, not an on-chain confidentiality boundary; Stellar contract records remain public.
 
 ### Pay a Share
 
@@ -331,7 +332,6 @@ Included:
 - paid/pending status
 - WhatsApp share
 - copy link
-- QR code
 - README and demo evidence
 
 ## Future Scope
@@ -342,10 +342,9 @@ Deferred:
 - mainnet asset configuration and validation hardening
 - Stellar anchor/ramp integrations
 - in-app asset swaps for users who need the selected settlement token
-- notifications
 - reusable groups
-- creator dashboards
-- backend/indexer
+- QR-code sharing
+- product analytics beyond on-chain activity metrics
 - participant reputation
 - full Splitwise-style accounting
 - invite/claim links

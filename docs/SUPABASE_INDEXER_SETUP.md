@@ -108,3 +108,46 @@ Confirm all of the following:
 4. An anonymous `INSERT`, `UPDATE`, or `DELETE` fails.
 5. Calling the Edge Function without `x-indexer-secret` returns `401`.
 6. A Split page still loads contract state if Supabase history is temporarily unavailable.
+
+### Confirm that the two-minute schedule is active
+
+Run this in the Supabase SQL Editor:
+
+```sql
+select jobid, jobname, schedule, active
+from cron.job
+where jobname = 'index-split-events-every-2-minutes';
+```
+
+The query must return one row with schedule `*/2 * * * *` and `active = true`.
+
+Check the recent scheduler runs:
+
+```sql
+select status, return_message, start_time, end_time
+from cron.job_run_details
+where jobid = (
+  select jobid
+  from cron.job
+  where jobname = 'index-split-events-every-2-minutes'
+)
+order by start_time desc
+limit 10;
+```
+
+Finally, confirm that indexing itself is advancing rather than only that the HTTP request was queued:
+
+```sql
+select
+  contract_id,
+  last_ledger,
+  updated_at,
+  now() - updated_at as indexer_lag,
+  case
+    when updated_at > now() - interval '5 minutes' then 'healthy'
+    else 'stale'
+  end as health
+from public.split_indexer_state;
+```
+
+The schedule is healthy when recent runs succeed and `split_indexer_state.updated_at` remains within roughly five minutes of the current time. If the job is missing, run `supabase/cron/index-split-events.sql` after replacing its placeholders locally. If runs fail, inspect the Edge Function logs and confirm that the Vault URL and `INDEXER_SECRET` match the deployed function.

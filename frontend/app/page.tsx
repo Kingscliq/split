@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { BalanceAmount } from "@/components/BalanceAmount";
 import { useWallet } from "@/contexts/WalletContext";
 import { formatAmount, getSplitsForWallet, tokenSymbol, type SplitRecord } from "@/lib/split-contract";
 
 export default function Home() {
-  const { address, connecting, connect } = useWallet();
+  const { address, connecting, balances, balanceLoading, balanceError, connect, refreshBalances } = useWallet();
   const [splits, setSplits] = useState<SplitRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export default function Home() {
 
       <section className="overview-grid" aria-label="Split overview">
         <article className="hero-card lime-card"><div className="hero-card-top"><span className="pill pill-dark">On-chain</span><span className="round-icon">↗</span></div><div><p className="card-label">Your splits</p><p className="display-amount">{splits.length}</p></div><div className="hero-card-foot"><div><strong>{active.length}</strong><span>active</span></div><div><strong>{completed}</strong><span>completed</span></div></div></article>
-        <article className="hero-card dark-card next-payment-card"><div className="hero-card-top"><span className="pill pill-muted">Live data</span><span className="tiny-avatar avatar-coral">S</span></div><div><p className="card-label">Connected to</p><p className="display-amount small">Stellar</p><p className="muted-copy">Testnet · direct-to-creator payments</p></div><button type="button" className="text-link" onClick={() => void load()}>Refresh <span>↻</span></button></article>
+        <article className="hero-card dark-card wallet-overview-card"><div className="hero-card-top"><span className="pill pill-muted">Testnet wallet</span><span className="tiny-avatar avatar-coral">S</span></div>{address ? <><div><p className="card-label">Available balance</p>{balances ? <div className="dashboard-balances"><div><BalanceAmount value={balances.XLM} /><span className="balance-asset">XLM</span></div><div><BalanceAmount value={balances.USDC} /><span className="balance-asset">USDC</span></div></div> : <p className="wallet-balance-placeholder">{balanceLoading ? "Reading balances…" : balanceError ?? "Balance unavailable."}</p>}</div><button type="button" className="text-link" onClick={() => void refreshBalances()} disabled={balanceLoading}>Refresh balances <span>{balanceLoading ? "…" : "↻"}</span></button></> : <><div><p className="card-label">Your balance at a glance</p><p className="wallet-connect-copy">Connect your wallet to see XLM and USDC before creating or paying a Split.</p></div><button type="button" className="text-link" onClick={() => void connect()} disabled={connecting}>{connecting ? "Connecting…" : "Connect wallet"} <span>→</span></button></>}</article>
       </section>
 
       <section className="section-block" id="your-splits">

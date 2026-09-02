@@ -16,7 +16,7 @@ const steps = [
   {
     number: "03",
     title: "Switch to Testnet",
-    body: "Open Freighter, select the network menu, and choose Testnet. Split will reject a wallet that is connected to the public network.",
+    body: "Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split. Split will reject a wallet that is connected to the public network.",
   },
   {
     number: "04",
