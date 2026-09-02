@@ -39,11 +39,12 @@ export function CopyAddressButton({ address, className = "", label }: CopyAddres
     window.setTimeout(() => setStatus("idle"), 2200);
   }
 
-  const text = status === "copied"
-    ? "Copied ✓"
-    : status === "failed"
-      ? "Copy failed"
-      : label ?? shortAddress(address);
+  const text =
+    status === "copied"
+      ? "Copied ✓"
+      : status === "failed"
+        ? "Copy failed"
+        : (label ?? shortAddress(address));
 
   return (
     <button

@@ -52,7 +52,9 @@ export function TransactionReceipt({ action, hash }: ReceiptData) {
 
   return (
     <section className="transaction-receipt" aria-labelledby="transaction-receipt-title">
-      <span className="receipt-check" aria-hidden="true">✓</span>
+      <span className="receipt-check" aria-hidden="true">
+        ✓
+      </span>
       <div className="receipt-copy">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id="transaction-receipt-title">{copy.title}</h2>
@@ -60,9 +62,19 @@ export function TransactionReceipt({ action, hash }: ReceiptData) {
         <code title={hash}>{hash}</code>
       </div>
       <div className="receipt-actions">
-        <a href={transactionExplorerUrl(hash)} target="_blank" rel="noreferrer">View on Stellar Expert <span>↗</span></a>
-        <button type="button" onClick={() => void copyHash()} className={copyStatus === "copied" ? "copied" : copyStatus === "failed" ? "failed" : ""}>
-          {copyStatus === "copied" ? "Hash copied ✓" : copyStatus === "failed" ? "Copy failed" : "Copy transaction hash"}
+        <a href={transactionExplorerUrl(hash)} target="_blank" rel="noreferrer">
+          View on Stellar Expert <span>↗</span>
+        </a>
+        <button
+          type="button"
+          onClick={() => void copyHash()}
+          className={copyStatus === "copied" ? "copied" : copyStatus === "failed" ? "failed" : ""}
+        >
+          {copyStatus === "copied"
+            ? "Hash copied ✓"
+            : copyStatus === "failed"
+              ? "Copy failed"
+              : "Copy transaction hash"}
         </button>
       </div>
     </section>

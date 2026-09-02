@@ -32,7 +32,10 @@ export default function OnboardingPage() {
         <div>
           <p className="eyebrow">Stellar Testnet setup</p>
           <h1>Get ready to use Split.</h1>
-          <p className="guide-intro">Set up a test wallet in a few minutes. Testnet XLM has no real-world value, so you can learn the payment flow without spending real money.</p>
+          <p className="guide-intro">
+            Set up a test wallet in a few minutes. Testnet XLM has no real-world value, so you can
+            learn the payment flow without spending real money.
+          </p>
         </div>
         <span className="guide-time">About 3 minutes</span>
       </header>
@@ -41,7 +44,10 @@ export default function OnboardingPage() {
         <span aria-hidden="true">!</span>
         <div>
           <h2 id="safety-title">Your recovery phrase stays private</h2>
-          <p>Split only needs your public wallet address. No Split page, organizer, feedback form, or support message should ever ask for your secret key or recovery phrase.</p>
+          <p>
+            Split only needs your public wallet address. No Split page, organizer, feedback form, or
+            support message should ever ask for your secret key or recovery phrase.
+          </p>
         </div>
       </section>
 
@@ -64,16 +70,36 @@ export default function OnboardingPage() {
           <h2>Quick readiness check</h2>
         </div>
         <ul>
-          <li><span aria-hidden="true">✓</span> Freighter is installed and unlocked</li>
-          <li><span aria-hidden="true">✓</span> The selected network says Testnet</li>
-          <li><span aria-hidden="true">✓</span> Freighter shows a Testnet XLM balance</li>
-          <li><span aria-hidden="true">✓</span> You copied only your public G… address</li>
+          <li>
+            <span aria-hidden="true">✓</span> Freighter is installed and unlocked
+          </li>
+          <li>
+            <span aria-hidden="true">✓</span> The selected network says Testnet
+          </li>
+          <li>
+            <span aria-hidden="true">✓</span> Freighter shows a Testnet XLM balance
+          </li>
+          <li>
+            <span aria-hidden="true">✓</span> You copied only your public G… address
+          </li>
         </ul>
         <div className="guide-actions">
-          <a className="button button-primary" href="https://developers.stellar.org/docs/build/guides/freighter/connect-testnet" target="_blank" rel="noreferrer">Open official setup guide <span>↗</span></a>
-          <Link className="button guide-secondary" href="/split/create">Create a split</Link>
+          <a
+            className="button button-primary"
+            href="https://developers.stellar.org/docs/build/guides/freighter/connect-testnet"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open official setup guide <span>↗</span>
+          </a>
+          <Link className="button guide-secondary" href="/split/create">
+            Create a split
+          </Link>
         </div>
-        <p className="guide-next-note">Already received a Split link? Return to that link after completing this checklist and connect your wallet there.</p>
+        <p className="guide-next-note">
+          Already received a Split link? Return to that link after completing this checklist and
+          connect your wallet there.
+        </p>
       </section>
     </AppShell>
   );

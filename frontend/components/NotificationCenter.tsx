@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getSplitsForWallet, type SplitRecord } from "@/lib/split-contract";
 
@@ -22,7 +30,9 @@ function storageKey(address: string) {
 function readViewed(address: string): Set<number> {
   try {
     const value = JSON.parse(window.localStorage.getItem(storageKey(address)) ?? "[]");
-    return new Set(Array.isArray(value) ? value.filter((id): id is number => Number.isInteger(id)) : []);
+    return new Set(
+      Array.isArray(value) ? value.filter((id): id is number => Number.isInteger(id)) : [],
+    );
   } catch {
     return new Set();
   }
@@ -40,8 +50,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const load = useCallback(async () => {
     if (!address) return;
     try {
-      const records = (await getSplitsForWallet(address, 50))
-        .filter((split) => split.creator !== address);
+      const records = (await getSplitsForWallet(address, 50)).filter(
+        (split) => split.creator !== address,
+      );
 
       if (initialized.current) {
         const newAssignment = records.find((split) => !previousIds.current.has(split.id));
@@ -103,16 +114,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
   }, [markViewed]);
 
-  const value = useMemo(() => ({ assignments, open, unread, toggle, close: () => setOpen(false) }), [assignments, open, unread, toggle]);
+  const value = useMemo(
+    () => ({ assignments, open, unread, toggle, close: () => setOpen(false) }),
+    [assignments, open, unread, toggle],
+  );
 
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      {toast && <div className="assignment-toast" role="status">
-        <span aria-hidden="true">✦</span>
-        <div><strong>New Split assigned</strong><p>{toast.title}</p></div>
-        <Link href={`/split/${toast.id}`} onClick={() => setToast(null)}>View →</Link>
-      </div>}
+      {toast && (
+        <div className="assignment-toast" role="status">
+          <span aria-hidden="true">✦</span>
+          <div>
+            <strong>New Split assigned</strong>
+            <p>{toast.title}</p>
+          </div>
+          <Link href={`/split/${toast.id}`} onClick={() => setToast(null)}>
+            View →
+          </Link>
+        </div>
+      )}
     </NotificationContext.Provider>
   );
 }
@@ -128,24 +149,53 @@ export function NotificationBell() {
       <button
         className="notification-bell"
         type="button"
-        aria-label={notifications.unread ? `Notifications, ${notifications.unread} unread` : "Notifications"}
+        aria-label={
+          notifications.unread ? `Notifications, ${notifications.unread} unread` : "Notifications"
+        }
         aria-expanded={notifications.open}
         onClick={notifications.toggle}
       >
         <span aria-hidden="true">♢</span>
-        {notifications.unread > 0 && <b>{notifications.unread > 9 ? "9+" : notifications.unread}</b>}
+        {notifications.unread > 0 && (
+          <b>{notifications.unread > 9 ? "9+" : notifications.unread}</b>
+        )}
       </button>
-      {notifications.open && <div className="notification-panel">
-        <div className="notification-panel-heading"><div><p className="eyebrow">Assignments</p><strong>Your notifications</strong></div><button type="button" onClick={notifications.close} aria-label="Close notifications">×</button></div>
-        {notifications.assignments.length === 0
-          ? <p className="notification-empty">No Splits have been assigned to this wallet yet.</p>
-          : <div className="notification-list">{notifications.assignments.slice(0, 6).map((split) => <Link href={`/split/${split.id}`} key={split.id} onClick={notifications.close}>
-              <span className="notification-mark" aria-hidden="true">{split.status === "Completed" ? "✓" : split.id}</span>
-              <span><strong>{split.title}</strong><small>Split #{split.id} · {split.status}</small></span>
-              <i aria-hidden="true">↗</i>
-            </Link>)}</div>}
-        <p className="notification-footnote">Checked automatically every 30 seconds while Split is open.</p>
-      </div>}
+      {notifications.open && (
+        <div className="notification-panel">
+          <div className="notification-panel-heading">
+            <div>
+              <p className="eyebrow">Assignments</p>
+              <strong>Your notifications</strong>
+            </div>
+            <button type="button" onClick={notifications.close} aria-label="Close notifications">
+              ×
+            </button>
+          </div>
+          {notifications.assignments.length === 0 ? (
+            <p className="notification-empty">No Splits have been assigned to this wallet yet.</p>
+          ) : (
+            <div className="notification-list">
+              {notifications.assignments.slice(0, 6).map((split) => (
+                <Link href={`/split/${split.id}`} key={split.id} onClick={notifications.close}>
+                  <span className="notification-mark" aria-hidden="true">
+                    {split.status === "Completed" ? "✓" : split.id}
+                  </span>
+                  <span>
+                    <strong>{split.title}</strong>
+                    <small>
+                      Split #{split.id} · {split.status}
+                    </small>
+                  </span>
+                  <i aria-hidden="true">↗</i>
+                </Link>
+              ))}
+            </div>
+          )}
+          <p className="notification-footnote">
+            Checked automatically every 30 seconds while Split is open.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -40,7 +40,8 @@ export function isActivityHistoryConfigured(): boolean {
 export async function getIndexedSplitEvents(splitId: number): Promise<IndexedSplitEvent[]> {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) return [];
   const query = new URLSearchParams({
-    select: "event_id,event_type,split_id,tx_hash,ledger,ledger_closed_at,actor,amount,total_paid,total_amount",
+    select:
+      "event_id,event_type,split_id,tx_hash,ledger,ledger_closed_at,actor,amount,total_paid,total_amount",
     contract_id: `eq.${CONTRACT_ID}`,
     split_id: `eq.${splitId}`,
     order: "ledger.desc,event_id.desc",
@@ -50,7 +51,7 @@ export async function getIndexedSplitEvents(splitId: number): Promise<IndexedSpl
     cache: "no-store",
   });
   if (!response.ok) throw new Error("Transaction history is temporarily unavailable.");
-  const rows = await response.json() as EventRow[];
+  const rows = (await response.json()) as EventRow[];
   return rows.map((row) => ({
     eventId: row.event_id,
     eventType: row.event_type,

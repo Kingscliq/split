@@ -1,6 +1,12 @@
 import { formatAmount } from "@/lib/split-contract";
 
-export function BalanceAmount({ value, fractionDigits = 4 }: { value: bigint; fractionDigits?: number }) {
+export function BalanceAmount({
+  value,
+  fractionDigits = 4,
+}: {
+  value: bigint;
+  fractionDigits?: number;
+}) {
   const [whole, fraction] = formatAmount(value, fractionDigits).split(".");
 
   return (
