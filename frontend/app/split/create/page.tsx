@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { StrKey } from "@stellar/stellar-sdk";
 import { AppShell } from "@/components/AppShell";
 import { useWallet } from "@/contexts/WalletContext";
 import { createSplit, TOKEN_CONTRACTS, toBaseUnits, type TokenSymbol } from "@/lib/split-contract";
 
 type Participant = { name: string; address: string; color: string };
+type ParticipantErrors = Record<number, { address?: string; name?: string }>;
 const colors = ["pink", "blue", "orange", "lime"];
 
 export default function CreateSplitPage() {
@@ -20,6 +22,7 @@ export default function CreateSplitPage() {
   const [participants, setParticipants] = useState<Participant[]>([{ name: "", address: "", color: "pink" }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [participantErrors, setParticipantErrors] = useState<ParticipantErrors>({});
 
   const math = useMemo(() => {
     try {
@@ -38,18 +41,61 @@ export default function CreateSplitPage() {
   }, [requested, finalAmount, participants.length]);
 
   function addParticipant() {
+    setParticipantErrors({});
     setParticipants((current) => [...current, { name: "", address: "", color: colors[current.length % colors.length] }]);
   }
 
   function removeParticipant(index: number) {
+    setParticipantErrors({});
     setParticipants((current) => current.filter((_, participantIndex) => participantIndex !== index));
+  }
+
+  function clearParticipantError(index: number, field: "address" | "name") {
+    setParticipantErrors((current) => {
+      if (!current[index]?.[field]) return current;
+      const next = { ...current, [index]: { ...current[index], [field]: undefined } };
+      if (!next[index].address && !next[index].name) delete next[index];
+      return next;
+    });
+  }
+
+  function validateParticipants() {
+    const nextErrors: ParticipantErrors = {};
+    const addresses = new Set<string>();
+
+    participants.forEach((participant, index) => {
+      const participantAddress = participant.address.trim();
+      const displayName = participant.name.trim();
+      const fields: ParticipantErrors[number] = {};
+
+      if (!participantAddress) fields.address = "Enter this participant’s wallet address.";
+      else if (!StrKey.isValidEd25519PublicKey(participantAddress)) fields.address = "Use a valid Stellar public address beginning with G.";
+      else if (addresses.has(participantAddress)) fields.address = "This wallet has already been added.";
+      else addresses.add(participantAddress);
+
+      if (!displayName) fields.name = "Enter a display name for this participant.";
+      if (fields.address || fields.name) nextErrors[index] = fields;
+    });
+
+    setParticipantErrors(nextErrors);
+    const firstInvalidIndex = Number(Object.keys(nextErrors)[0]);
+    if (Number.isInteger(firstInvalidIndex)) {
+      const firstField = nextErrors[firstInvalidIndex].address ? "address" : "name";
+      requestAnimationFrame(() => {
+        const input = document.getElementById(`participant-${firstInvalidIndex}-${firstField}`);
+        input?.scrollIntoView({ behavior: "smooth", block: "center" });
+        input?.focus({ preventScroll: true });
+      });
+      return false;
+    }
+    return true;
   }
 
   async function submit() {
     setError(null);
     if (!math.even) return setError("The final amount must split equally between every participant.");
     if (!title.trim()) return setError("Add a title for this split.");
-    if (participants.some((participant) => !participant.address.trim() || !participant.name.trim())) return setError("Add a wallet address and display name for every participant.");
+    if (!validateParticipants()) return;
     const creator = address ?? await connect();
     if (!creator) return;
     setSubmitting(true);
@@ -107,16 +153,18 @@ export default function CreateSplitPage() {
           <div className="form-section participants-section">
             <div className="section-heading compact"><div><span className="field-label">Who is paying?</span><small>{participants.length} participant{participants.length === 1 ? "" : "s"}</small></div><button className="add-person" type="button" onClick={addParticipant} disabled={participants.length >= 50}>＋ Add person</button></div>
             <div className="participant-editor">
-              {participants.map((participant, index) => <div className="participant-edit-row" key={index}>
+              {participants.map((participant, index) => <div className={`participant-edit-row${participantErrors[index] ? " has-error" : ""}`} key={index}>
                 <span className={`avatar avatar-${participant.color}`}>{participant.name.slice(0, 1).toUpperCase() || index + 1}</span>
                 <div className="participant-fields">
-                  <div className="participant-field participant-field-primary">
+                  <div className={`participant-field participant-field-primary${participantErrors[index]?.address ? " field-has-error" : ""}`}>
                     <label htmlFor={`participant-${index}-address`}>Wallet address <span>Required</span></label>
-                    <input id={`participant-${index}-address`} className="address-input" placeholder="Paste public G… address" value={participant.address} autoComplete="off" spellCheck={false} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item))} />
+                    <input id={`participant-${index}-address`} className="address-input" placeholder="Paste public G… address" value={participant.address} autoComplete="off" spellCheck={false} aria-invalid={Boolean(participantErrors[index]?.address)} aria-describedby={participantErrors[index]?.address ? `participant-${index}-address-error` : undefined} onChange={(event) => { clearParticipantError(index, "address"); setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item)); }} />
+                    {participantErrors[index]?.address && <small className="participant-field-error" id={`participant-${index}-address-error`} role="alert">{participantErrors[index].address}</small>}
                   </div>
-                  <div className="participant-field participant-field-secondary">
+                  <div className={`participant-field participant-field-secondary${participantErrors[index]?.name ? " field-has-error" : ""}`}>
                     <label htmlFor={`participant-${index}-name`}>Display name</label>
-                    <input id={`participant-${index}-name`} className="name-input" placeholder="e.g. Favour" maxLength={40} value={participant.name} onChange={(event) => setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} />
+                    <input id={`participant-${index}-name`} className="name-input" placeholder="e.g. Favour" maxLength={40} value={participant.name} aria-invalid={Boolean(participantErrors[index]?.name)} aria-describedby={participantErrors[index]?.name ? `participant-${index}-name-error` : undefined} onChange={(event) => { clearParticipantError(index, "name"); setParticipants((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item)); }} />
+                    {participantErrors[index]?.name && <small className="participant-field-error" id={`participant-${index}-name-error`} role="alert">{participantErrors[index].name}</small>}
                   </div>
                 </div>
                 <strong>{math.each.toFixed(2)} <span>{token}</span></strong>
