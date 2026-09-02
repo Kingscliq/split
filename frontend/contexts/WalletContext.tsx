@@ -2,7 +2,7 @@
 
 import { getAddress, getNetworkDetails, isAllowed, isConnected, requestAccess, WatchWalletChanges } from "@stellar/freighter-api";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { NETWORK_PASSPHRASE } from "@/lib/split-contract";
+import { getTokenBalance, NETWORK_PASSPHRASE, TOKEN_CONTRACTS } from "@/lib/split-contract";
 
 export const FREIGHTER_INSTALL_URL = "https://www.freighter.app/";
 const WALLET_DISCONNECTED_KEY = "split-wallet-disconnected";
@@ -29,13 +29,22 @@ export type WalletIssue = {
   message: string;
 };
 
+export type WalletBalances = {
+  XLM: bigint;
+  USDC: bigint;
+};
+
 type WalletContextValue = {
   address: string | null;
   connecting: boolean;
   error: string | null;
   issue: WalletIssue | null;
+  balances: WalletBalances | null;
+  balanceLoading: boolean;
+  balanceError: string | null;
   connect: (onError?: (issue: WalletIssue) => void) => Promise<string | null>;
   disconnect: () => void;
+  refreshBalances: () => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -45,7 +54,33 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issue, setIssue] = useState<WalletIssue | null>(null);
+  const [balances, setBalances] = useState<WalletBalances | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
   const manuallyDisconnected = useRef(false);
+
+  const refreshBalances = useCallback(async () => {
+    if (!address) {
+      setBalances(null);
+      setBalanceError(null);
+      setBalanceLoading(false);
+      return;
+    }
+    setBalanceLoading(true);
+    setBalanceError(null);
+    try {
+      const [XLM, USDC] = await Promise.all([
+        getTokenBalance(TOKEN_CONTRACTS.XLM, address),
+        getTokenBalance(TOKEN_CONTRACTS.USDC, address),
+      ]);
+      setBalances({ XLM, USDC });
+    } catch {
+      setBalances(null);
+      setBalanceError("Balances are temporarily unavailable.");
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [address]);
 
   const connect = useCallback(async (onError?: (issue: WalletIssue) => void) => {
     manuallyDisconnected.current = false;
@@ -75,7 +110,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (network.networkPassphrase !== NETWORK_PASSPHRASE) {
         const wrongNetwork: WalletIssue = {
           code: "wrong_network",
-          message: `Freighter is on ${network.network || "another network"}. Switch it to Testnet—Split will reconnect automatically.`,
+          message: `Freighter is on ${network.network || "another network"}. Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split—it will reconnect automatically.`,
         };
         throw wrongNetwork;
       }
@@ -105,7 +140,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setIssue(null);
     setConnecting(false);
+    setBalances(null);
+    setBalanceError(null);
+    setBalanceLoading(false);
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void refreshBalances(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [refreshBalances]);
 
   useEffect(() => {
     let watcher: WatchWalletChanges | null = null;
@@ -140,7 +183,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         if (wallet.address && wallet.networkPassphrase) {
           const wrongNetwork: WalletIssue = {
             code: "wrong_network",
-            message: `Freighter is on ${wallet.network || "another network"}. Switch it to Testnet—Split will reconnect automatically.`,
+            message: `Freighter is on ${wallet.network || "another network"}. Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split—it will reconnect automatically.`,
           };
           setError(wrongNetwork.message);
           setIssue(wrongNetwork);
@@ -155,8 +198,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ address, connecting, error, issue, connect, disconnect }),
-    [address, connecting, error, issue, connect, disconnect],
+    () => ({ address, connecting, error, issue, balances, balanceLoading, balanceError, connect, disconnect, refreshBalances }),
+    [address, connecting, error, issue, balances, balanceLoading, balanceError, connect, disconnect, refreshBalances],
   );
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

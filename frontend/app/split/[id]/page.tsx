@@ -15,6 +15,18 @@ type PayIssue = {
   kind: "wallet_missing" | "wrong_network" | "funding" | "not_participant" | "transaction";
   message: string;
 };
+type WalletBalanceState = {
+  asset: bigint;
+  xlm: bigint;
+};
+
+async function readWalletBalances(token: string, wallet: string): Promise<WalletBalanceState> {
+  const asset = await getTokenBalance(token, wallet);
+  const xlm = token === TOKEN_CONTRACTS.XLM
+    ? asset
+    : await getTokenBalance(TOKEN_CONTRACTS.XLM, wallet);
+  return { asset, xlm };
+}
 
 export default function SplitDetailPage() {
   const params = useParams<{ id: string }>();
@@ -30,6 +42,9 @@ export default function SplitDetailPage() {
   const [transaction, setTransaction] = useState<"pay" | "close" | null>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [transactionReceipt, setTransactionReceipt] = useState<ReceiptData | null>(null);
+  const [walletBalance, setWalletBalance] = useState<WalletBalanceState | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   const queryReceipt = useMemo<ReceiptData | null>(() => {
     const hash = searchParams.get("tx");
@@ -55,6 +70,33 @@ export default function SplitDetailPage() {
     const timeout = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timeout);
   }, [load]);
+
+  const loadWalletBalance = useCallback(async () => {
+    if (!split || !address) {
+      setWalletBalance(null);
+      setBalanceError(null);
+      return;
+    }
+    setBalanceLoading(true);
+    setBalanceError(null);
+    try {
+      setWalletBalance(await readWalletBalances(split.token, address));
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Could not read this wallet’s balance.";
+      if (/no Testnet XLM|not found|does not exist/i.test(message)) setWalletBalance({ asset: 0n, xlm: 0n });
+      else {
+        setWalletBalance(null);
+        setBalanceError("Balance temporarily unavailable.");
+      }
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [address, split]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadWalletBalance(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadWalletBalance]);
 
   const ownShare = useMemo(() => participants.find((participant) => participant.participant === address) ?? null, [participants, address]);
   const visibleParticipants = useMemo(() => ownShare ? [ownShare] : participants, [ownShare, participants]);
@@ -91,10 +133,11 @@ export default function SplitDetailPage() {
     if (remaining <= 0n) return;
     setTransaction("pay");
     try {
-      const assetBalance = await getTokenBalance(split.token, payer);
-      const xlmBalance = split.token === TOKEN_CONTRACTS.XLM
-        ? assetBalance
-        : await getTokenBalance(TOKEN_CONTRACTS.XLM, payer);
+      const balances = await readWalletBalances(split.token, payer);
+      const assetBalance = balances.asset;
+      const xlmBalance = balances.xlm;
+      setWalletBalance(balances);
+      setBalanceError(null);
 
       if (xlmBalance <= 0n) {
         setPayIssue({ kind: "funding", message: "This wallet has no Testnet XLM yet. Fund it with Friendbot before paying." });
@@ -110,7 +153,7 @@ export default function SplitDetailPage() {
 
       const result = await payShare(splitId, payer, remaining);
       recordReceipt("pay", result.hash);
-      await load();
+      await Promise.all([load(), loadWalletBalance()]);
     }
     catch (caught) {
       const message = caught instanceof Error ? caught.message : "Payment failed.";
@@ -171,7 +214,13 @@ export default function SplitDetailPage() {
   if (loading) return <AppShell><div className="contract-state detail-state">Reading split #{splitId} from Stellar testnet…</div></AppShell>;
   if (loadError && !split) return <AppShell><div className="contract-state detail-state error-state"><p>{loadError}</p><Link href="/">Back to dashboard</Link></div></AppShell>;
   if (!split) return null;
+  if (!address) return <AppShell><div className="contract-state detail-state"><p>Connect your wallet to confirm that this Split is assigned to you.</p><button type="button" onClick={() => void connect()}>Connect wallet</button></div></AppShell>;
+  const canViewSplit = address === split.creator || participants.some((participant) => participant.participant === address);
+  if (!canViewSplit) return <AppShell><div className="contract-state detail-state error-state"><p>This Split is not assigned to the connected wallet.</p><Link href="/split/create">Create your own Split →</Link></div></AppShell>;
   const remainingShare = ownShare ? ownShare.amountOwed - ownShare.amountPaid : 0n;
+  const balanceShortfall = walletBalance && remainingShare > walletBalance.asset
+    ? remainingShare - walletBalance.asset
+    : 0n;
 
   return (
     <AppShell>
@@ -200,8 +249,17 @@ export default function SplitDetailPage() {
         <aside className="pay-card">
           <div><span className="mini-kicker">{ownShare ? "Your turn" : "Direct payment"}</span><h2>{ownShare ? `Send ${ownShare.displayName || "your"} share` : address ? "You’re not in this split" : "Connect your wallet"}</h2><p>{symbol} goes directly to the Split creator. The contract never holds the funds.</p><Link className="pay-guide-link" href="/onboarding">First time here? Read the Testnet guide →</Link></div>
           <div className="pay-amount"><span>{symbol === "USDC" ? "$" : "✦"}</span><strong>{formatAmount(remainingShare)}</strong><small>{symbol}</small></div>
+          {address && <div className={`wallet-balance-card${balanceShortfall > 0n ? " insufficient" : ""}`} aria-live="polite">
+            <div className="wallet-balance-heading"><span>Available wallet balance</span><button type="button" onClick={() => void loadWalletBalance()} disabled={balanceLoading} aria-label="Refresh wallet balance">{balanceLoading ? "…" : "↻"}</button></div>
+            {balanceLoading && !walletBalance ? <strong>Checking Testnet…</strong> : walletBalance ? <>
+              <strong>{formatAmount(walletBalance.asset, 4)} <small>{symbol}</small></strong>
+              {ownShare && remainingShare > 0n && <p>{balanceShortfall > 0n ? `You need ${formatAmount(balanceShortfall)} more ${symbol} to pay this share.` : "You have enough for this share."}</p>}
+              {symbol !== "XLM" && <small>{formatAmount(walletBalance.xlm, 4)} XLM available for network fees</small>}
+              {walletBalance.xlm <= 0n && <Link href="/onboarding#fund-testnet-wallet">Fund this Testnet wallet →</Link>}
+            </> : <><strong>Balance unavailable</strong><p>{balanceError ?? "Refresh to try again."}</p></>}
+          </div>}
           <button className="button button-dark button-wide" type="button" disabled={transaction !== null || split.status !== "Active" || (!!ownShare && remainingShare <= 0n)} onClick={() => void pay()}>{transaction === "pay" ? "Checking balance…" : !address ? "Connect to pay" : ownShare ? remainingShare > 0n ? "Pay remaining share" : "Share paid" : "Check connected wallet"} <span>→</span></button>
-          {payIssue && <div className={`pay-action-error ${payIssue.kind}`} role="alert"><strong>{payIssue.kind === "funding" ? "Wallet needs funds" : payIssue.kind === "not_participant" ? "Wrong wallet connected" : "Payment needs attention"}</strong><span>{payIssue.message}</span><div>{payIssue.kind === "wallet_missing" && <a href={FREIGHTER_INSTALL_URL} target="_blank" rel="noreferrer">Install Freighter ↗</a>}{payIssue.kind === "wrong_network" && <button type="button" onClick={() => void connect()} disabled={transaction !== null}>Check Testnet again</button>}{payIssue.kind === "funding" && <Link href="/onboarding#fund-testnet-wallet">Fund wallet with Friendbot →</Link>}{payIssue.kind === "transaction" && <button type="button" onClick={() => void pay()} disabled={transaction !== null}>{address ? "Try payment again" : "Try wallet connection again"}</button>}</div></div>}
+          {payIssue && <div className={`pay-action-error ${payIssue.kind}`} role="alert"><strong>{payIssue.kind === "funding" ? "Wallet needs funds" : payIssue.kind === "not_participant" ? "Wrong wallet connected" : "Payment needs attention"}</strong><span>{payIssue.message}</span><div>{payIssue.kind === "wallet_missing" && <a href={FREIGHTER_INSTALL_URL} target="_blank" rel="noreferrer">Install Freighter ↗</a>}{payIssue.kind === "wrong_network" && <button type="button" onClick={() => void connect()} disabled={transaction !== null}>I’ve switched — check again</button>}{payIssue.kind === "funding" && <Link href="/onboarding#fund-testnet-wallet">Fund wallet with Friendbot →</Link>}{payIssue.kind === "transaction" && <button type="button" onClick={() => void pay()} disabled={transaction !== null}>{address ? "Try payment again" : "Try wallet connection again"}</button>}</div></div>}
           <small className="network-note dark-note"><span className="status-dot" /> {address ? `Connected · ${shortAddress(address)}` : "Freighter · Stellar testnet"}</small>
         </aside>
       </div>
