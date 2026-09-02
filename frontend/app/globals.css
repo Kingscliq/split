@@ -62,19 +62,28 @@ button { cursor: pointer; }
 .brand-mark { width: 31px; height: 31px; border-radius: 10px; background: var(--lime); display: grid; place-content: center; transform: rotate(-5deg); }
 .brand-mark i { display: block; width: 14px; height: 5px; background: var(--ink); border-radius: 5px; }
 .brand-mark i + i { width: 9px; margin-top: 3px; }
-.version-switcher { margin-top: 18px; position: relative; }
-.version-switcher > summary { min-height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 13px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; background: var(--surface); color: var(--control-text); font-size: 11px; font-weight: 760; user-select: none; }
-.version-switcher > summary::-webkit-details-marker { display: none; }
-.version-switcher > summary i { color: var(--quiet); font-size: 10px; font-style: normal; transition: transform .2s ease; }
-.version-switcher[open] > summary i { transform: rotate(180deg); }
-.version-menu { width: 280px; padding: 11px; border: 1px solid var(--line); border-radius: 16px; display: grid; gap: 5px; position: absolute; z-index: 90; top: calc(100% + 7px); left: 0; background: var(--surface); box-shadow: 0 18px 45px rgba(0,0,0,.35); }
-.version-menu > p { margin: 1px 4px 7px; color: var(--quiet); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.version-switcher { width: 100%; margin-top: 16px; position: relative; }
+.version-trigger { width: 100%; min-height: 44px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 13px; display: flex; align-items: center; justify-content: space-between; background: var(--surface); color: var(--control-text); text-align: left; transition: border-color .2s ease, background-color .2s ease; }
+.version-trigger:hover, .version-switcher.open .version-trigger { border-color: rgba(217,255,74,.35); background: var(--surface-2); }
+.version-trigger-copy { display: flex; align-items: baseline; gap: 7px; }
+.version-trigger-copy small { color: var(--quiet); font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.version-trigger-copy strong { color: var(--cream); font-size: 11px; }
+.version-trigger i { color: var(--quiet); font-size: 10px; font-style: normal; transition: transform .2s ease; }
+.version-switcher.open .version-trigger i { transform: rotate(180deg); }
+.version-menu { width: 258px; padding: 10px; border: 1px solid var(--line); border-radius: 15px; display: grid; gap: 5px; position: absolute; z-index: 90; top: calc(100% + 7px); left: 0; background: var(--surface); box-shadow: 0 18px 45px rgba(0,0,0,.4); }
+.version-menu > p { margin: 2px 5px 7px; color: var(--quiet); font-size: 8px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .version-menu > a, .version-menu > span { min-height: 55px; padding: 10px; border-radius: 11px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 3px 12px; }
 .version-menu > a:hover { background: var(--surface-2); }
 .version-menu > span.current { background: rgba(217,255,74,.08); }
-.version-menu strong { font-size: 11px; }.version-menu small { grid-column: 1; color: var(--quiet); font-size: 8px; }.version-menu b { grid-column: 2; grid-row: 1 / span 2; color: var(--lime); font-size: 8px; }
-.version-switcher.compact { margin: 0; }.version-switcher.compact > summary { min-height: 34px; padding: 0 10px; border-radius: 999px; gap: 7px; }.version-switcher.compact .version-menu { left: 0; }
+.version-menu strong { font-size: 11px; }
+.version-menu small { grid-column: 1; color: var(--quiet); font-size: 8px; }
+.version-menu b { grid-column: 2; grid-row: 1 / span 2; color: var(--lime); font-size: 8px; }
+.version-switcher.compact { width: auto; margin: 0; }
+.version-switcher.compact .version-trigger { width: auto; min-height: 34px; padding: 0 10px; border-radius: 999px; gap: 7px; }
+.version-switcher.compact .version-trigger-copy small { display: none; }
+.version-switcher.compact .version-menu { left: 0; }
 .mobile-brand-group { display: flex; align-items: center; gap: 9px; }
+.desktop-brand-row { justify-content: flex-start; }
 .desktop-nav { display: grid; gap: 7px; margin-top: 54px; }
 .desktop-nav a { display: flex; align-items: center; gap: 12px; padding: 12px 13px; border-radius: 13px; color: var(--muted); font-size: 14px; transition: .2s ease; }
 .desktop-nav a span { font-size: 18px; width: 20px; text-align: center; }

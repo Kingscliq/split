@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 type SplitVersion = "v1" | "v2";
 
@@ -23,15 +24,44 @@ const versions: Array<{ id: SplitVersion; label: string; description: string; ba
 
 export function VersionSwitcher({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function closeMenu(event: MouseEvent) {
+      if (!switcherRef.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
 
   return (
-    <details className={`version-switcher${compact ? " compact" : ""}`}>
-      <summary aria-label={`Current product version: ${currentVersion.toUpperCase()}`}>
-        <span>{currentVersion.toUpperCase()}</span>
+    <div className={`version-switcher${compact ? " compact" : ""}${isOpen ? " open" : ""}`} ref={switcherRef}>
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className="version-trigger"
+        onClick={() => setIsOpen((open) => !open)}
+        type="button"
+      >
+        <span className="version-trigger-copy">
+          <small>Experience</small>
+          <strong>{currentVersion.toUpperCase()}</strong>
+        </span>
         <i aria-hidden="true">⌄</i>
-      </summary>
-      <div className="version-menu">
-        <p>Experience version</p>
+      </button>
+      {isOpen ? <div className="version-menu" role="menu">
+        <p>Select product version</p>
         {versions.map((version) => {
           const content = <><strong>{version.label}</strong><small>{version.description}</small></>;
 
@@ -39,7 +69,7 @@ export function VersionSwitcher({ compact = false }: { compact?: boolean }) {
             ? <span className="current" aria-current="page" key={version.id}>{content}<b>Current</b></span>
             : <a href={`${version.baseUrl.replace(/\/$/, "")}${pathname}`} key={version.id}>{content}<b>Open ↗</b></a>;
         })}
-      </div>
-    </details>
+      </div> : null}
+    </div>
   );
 }

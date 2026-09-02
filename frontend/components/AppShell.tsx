@@ -24,11 +24,13 @@ export function AppShell({ children, active }: AppShellProps) {
     <NotificationProvider><main className="site-canvas">
       <div className="app-window">
         <aside className="sidebar">
-          <Link className="brand" href="/" aria-label="Split home">
-            <Logo />
-            <span>split</span>
-          </Link>
-          <VersionSwitcher />
+          <div className="mobile-brand-group desktop-brand-row">
+            <Link className="brand" href="/" aria-label="Split home">
+              <Logo />
+              <span>split</span>
+            </Link>
+            <VersionSwitcher compact />
+          </div>
 
           <nav className="desktop-nav" aria-label="Primary navigation">
             <Link className={active === "home" ? "active" : ""} href="/">
