@@ -1,7 +1,22 @@
 "use client";
 
-import { getAddress, getNetworkDetails, isAllowed, isConnected, requestAccess, WatchWalletChanges } from "@stellar/freighter-api";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  getAddress,
+  getNetworkDetails,
+  isAllowed,
+  isConnected,
+  requestAccess,
+  WatchWalletChanges,
+} from "@stellar/freighter-api";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getTokenBalance, NETWORK_PASSPHRASE, TOKEN_CONTRACTS } from "@/lib/split-contract";
 
 export const FREIGHTER_INSTALL_URL = "https://www.freighter.app/";
@@ -119,8 +134,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } catch (caught) {
       const walletIssue: WalletIssue =
         typeof caught === "object" && caught !== null && "code" in caught && "message" in caught
-          ? caught as WalletIssue
-          : { code: "unknown", message: caught instanceof Error ? caught.message : "Could not connect Freighter." };
+          ? (caught as WalletIssue)
+          : {
+              code: "unknown",
+              message: caught instanceof Error ? caught.message : "Could not connect Freighter.",
+            };
       if (onError) {
         onError(walletIssue);
       } else {
@@ -198,8 +216,30 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ address, connecting, error, issue, balances, balanceLoading, balanceError, connect, disconnect, refreshBalances }),
-    [address, connecting, error, issue, balances, balanceLoading, balanceError, connect, disconnect, refreshBalances],
+    () => ({
+      address,
+      connecting,
+      error,
+      issue,
+      balances,
+      balanceLoading,
+      balanceError,
+      connect,
+      disconnect,
+      refreshBalances,
+    }),
+    [
+      address,
+      connecting,
+      error,
+      issue,
+      balances,
+      balanceLoading,
+      balanceError,
+      connect,
+      disconnect,
+      refreshBalances,
+    ],
   );
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

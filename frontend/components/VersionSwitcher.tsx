@@ -46,7 +46,10 @@ export function VersionSwitcher({ compact = false }: { compact?: boolean }) {
   }, []);
 
   return (
-    <div className={`version-switcher${compact ? " compact" : ""}${isOpen ? " open" : ""}`} ref={switcherRef}>
+    <div
+      className={`version-switcher${compact ? " compact" : ""}${isOpen ? " open" : ""}`}
+      ref={switcherRef}
+    >
       <button
         aria-expanded={isOpen}
         aria-haspopup="menu"
@@ -60,16 +63,31 @@ export function VersionSwitcher({ compact = false }: { compact?: boolean }) {
         </span>
         <i aria-hidden="true">⌄</i>
       </button>
-      {isOpen ? <div className="version-menu" role="menu">
-        <p>Select product version</p>
-        {versions.map((version) => {
-          const content = <><strong>{version.label}</strong><small>{version.description}</small></>;
+      {isOpen ? (
+        <div className="version-menu" role="menu">
+          <p>Select product version</p>
+          {versions.map((version) => {
+            const content = (
+              <>
+                <strong>{version.label}</strong>
+                <small>{version.description}</small>
+              </>
+            );
 
-          return version.id === currentVersion
-            ? <span className="current" aria-current="page" key={version.id}>{content}<b>Current</b></span>
-            : <a href={`${version.baseUrl.replace(/\/$/, "")}${pathname}`} key={version.id}>{content}<b>Open ↗</b></a>;
-        })}
-      </div> : null}
+            return version.id === currentVersion ? (
+              <span className="current" aria-current="page" key={version.id}>
+                {content}
+                <b>Current</b>
+              </span>
+            ) : (
+              <a href={`${version.baseUrl.replace(/\/$/, "")}${pathname}`} key={version.id}>
+                {content}
+                <b>Open ↗</b>
+              </a>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

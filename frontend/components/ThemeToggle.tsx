@@ -14,9 +14,19 @@ export function ThemeToggle() {
   }
 
   return (
-    <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label="Switch color theme" title="Switch color theme">
-      <span className="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
-      <span className="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+    <button
+      className="theme-toggle"
+      type="button"
+      onClick={toggleTheme}
+      aria-label="Switch color theme"
+      title="Switch color theme"
+    >
+      <span className="theme-icon theme-icon-sun" aria-hidden="true">
+        ☀
+      </span>
+      <span className="theme-icon theme-icon-moon" aria-hidden="true">
+        ☾
+      </span>
     </button>
   );
 }
