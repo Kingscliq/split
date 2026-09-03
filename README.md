@@ -11,7 +11,7 @@ Split is currently a **Stellar Testnet MVP** and is being prepared for the Rise 
 | Resource | Link | Status |
 | --- | --- | --- |
 | Source code | [github.com/Kingscliq/split](https://github.com/Kingscliq/split) | Public |
-| Web application | [split-zeta-six.vercel.app](https://split-zeta-six.vercel.app/) | Live and publicly accessible |
+| Web application | [split-zig.vercel.app](https://split-zig.vercel.app/) | Live and publicly accessible |
 | Testnet contract | [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAMQBDU43E2QJSOLKSMPRK4NIO73RRPPRVMSZGNNQEPOJVHJM674KECL) | Deployed |
 | User feedback form | Not published yet | Required for Level 5 |
 | Feedback response spreadsheet | Not published yet | Required for Level 5 |
@@ -42,7 +42,17 @@ Payments move directly from the participant to the creator. The Split contract t
 - Settle in native XLM or a configured Testnet USDC token
 - Connect and sign transactions with Freighter
 - Follow an in-app Testnet wallet setup and safety guide
-- Open a Split page without connecting a wallet
+- Fund a connected Testnet wallet with Stellar Friendbot
+- View and copy confirmed transaction receipts with Stellar Expert links
+- Copy connected and participant public wallet addresses
+- Detect wrong-network changes and reconnect automatically after Freighter is switched to Testnet
+- Check token balances before payment and distinguish insufficient funds from an unfunded wallet
+- Show wallet and transaction errors beside the action that needs attention
+- Limit the dashboard to Splits created by or assigned to the connected wallet
+- Give the approved admin Testnet wallet a contract-wide activity dashboard with all Splits and unique creator/participant wallets
+- Notify connected participants about assigned Splits with an unread badge, recent-assignment panel, and in-app live toast
+- Persist contract events and transaction hashes through a Supabase event indexer, with a permanent activity timeline on each Split page
+- Limit Split detail pages to the creator and assigned participant wallets
 - Pay a full or remaining participant share
 - Track total collected, remaining amount, and completion progress
 - Show paid and pending status for each participant
@@ -54,9 +64,11 @@ Payments move directly from the participant to the creator. The Split contract t
 ### Current MVP limitations
 
 - Participants must provide wallet addresses before the creator creates a Split; self-join and claim links are future work.
-- Testnet wallet installation and funding are not yet guided inside the application.
+- Freighter requires the user to approve network changes inside the wallet; Split detects the change and reconnects automatically once Testnet is selected.
 - QR-code sharing is not implemented.
-- There is no built-in analytics dashboard or user identity system. Level 5 usage will be measured using unique participating wallet addresses, successful transactions, feedback responses, and analytics screenshots.
+- The admin dashboard reports current contract state and unique public wallet addresses; Split does not yet have an off-chain identity or signup system.
+- Split detail pages are gated in the application, but their underlying contract records remain public on Stellar Testnet.
+- Assignment notifications poll current contract state while the application is open. Read status is stored per wallet in the current browser; push notifications across devices require a future backend/indexer.
 - USDC onboarding requires a Testnet asset balance and may require additional trustline guidance. XLM is the recommended asset for the first user cohort.
 
 ## Architecture
@@ -84,6 +96,7 @@ Stellar Testnet RPC ---- Soroban Split contract
 | Contract | Rust and Soroban SDK | Split validation, participant state, payments, status, and events |
 | Assets | Native XLM SAC and configured USDC SAC | Direct participant-to-creator settlement |
 | Hosting | Vercel | Web application deployment |
+| Event index | Supabase Edge Functions, Cron, and Postgres | Durable transaction history and Explorer links |
 
 More detail is available in [docs/architecture-overview.md](docs/architecture-overview.md) and [contracts/split_contract/SPEC.md](contracts/split_contract/SPEC.md).
 
@@ -127,9 +140,14 @@ NEXT_PUBLIC_STELLAR_RPC_URL=<stellar-testnet-rpc-url>
 NEXT_PUBLIC_SIMULATION_SOURCE=<valid-public-g-address>
 NEXT_PUBLIC_XLM_TOKEN_CONTRACT=<native-xlm-sac-contract-id>
 NEXT_PUBLIC_USDC_TOKEN_CONTRACT=<verified-testnet-usdc-sac-contract-id>
+NEXT_PUBLIC_SPLIT_VERSION=v1
+NEXT_PUBLIC_SPLIT_V1_URL=https://split-v1.vercel.app
+NEXT_PUBLIC_SPLIT_V2_URL=https://split-zig.vercel.app
 ```
 
 Never commit secret keys or wallet seed phrases. All `NEXT_PUBLIC_*` values are embedded in the browser bundle and must contain public configuration only.
+
+The durable event-history infrastructure is defined in [`supabase/`](supabase/). Follow the [Supabase indexer setup guide](docs/SUPABASE_INDEXER_SETUP.md) to apply the migration, deploy the Edge Function, schedule ingestion, and configure Vercel. The service-role key and indexer secret must remain server-side.
 
 ### Contract validation
 
@@ -202,11 +220,17 @@ Every shipped feedback-driven change must link to its evidence and implementatio
 
 | Feedback insight | Planned or shipped improvement | Validation method | Commit |
 | --- | --- | --- | --- |
-| Testers need a simpler first transaction | Add an in-product Testnet onboarding guide covering Freighter, network selection, funding, and payment | Measure onboarding completion and repeat support questions | Pending user feedback and implementation |
+| Testers need a simpler first transaction | Added an in-product Testnet onboarding guide covering Freighter, network selection, funding, and payment | Measure onboarding completion and repeat support questions | [4f9bdba](https://github.com/Kingscliq/split/commit/4f9bdba) and [2766d9f](https://github.com/Kingscliq/split/commit/2766d9f) |
 | Participants cannot join without sending an address first | Evaluate a safe invite-and-claim flow without expanding into expense accounting | Prototype test and participant feedback | Pending user feedback and implementation |
-| Sharing should work beyond copied links | Add and validate a scannable QR code on the public Split page | Mobile scan test and user rating | Pending user feedback and implementation |
-| Transaction progress can be unclear | Improve signing, submission, confirmation, retry, and failure messages | Controlled wallet-state tests | Pending user feedback and implementation |
-| Users need confidence that activity is real | Add clear explorer links for the contract and successful transactions | Verify every displayed link on Testnet | Pending user feedback and implementation |
+| Sharing should work beyond copied links | Add and validate a scannable QR code on the Split page in V2 | Mobile scan test and user rating | V2 backlog |
+| Transaction progress can be unclear | Added signing, submission, confirmation, retry, and failure messages | Controlled wallet-state tests | [4ad050e](https://github.com/Kingscliq/split/commit/4ad050e) and [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
+| Users need confidence that activity is real | Added immediate receipts and a persistent indexed activity timeline with Stellar Expert links | Verify every displayed link and indexed event on Testnet | [4ad050e](https://github.com/Kingscliq/split/commit/4ad050e) and [707c04e](https://github.com/Kingscliq/split/commit/707c04e) |
+| Wallet addresses are difficult to reuse | Added copy controls for the connected wallet and participant addresses | Desktop and mobile clipboard test | [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
+| Missing Freighter and wrong-network errors block onboarding | Added an install link, explicit Testnet guidance, and automatic reconnection after the user switches Freighter to Testnet | Missing-extension and Public-to-Testnet wallet tests | [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
+| Unfunded wallets are reported as nonexistent accounts | Added XLM/token balance checks and a Friendbot recovery path | Unfunded and insufficient-balance payment tests | [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
+| Contract-wide activity exposes unrelated Splits | Filtered dashboard results to Splits created by or assigned to the connected wallet | Creator, participant, and unrelated-wallet dashboard tests | [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
+| Unrelated wallets can open a shared Split URL | Gate Split details to the creator and assigned participant wallets and offer unrelated users a create action | Creator, participant, disconnected, and unrelated-wallet route tests | Implemented locally; commit pending |
+| Payment errors are too far from the pressed action | Rendered wallet, balance, and transaction errors directly inside the payment card | Controlled failure-state UI tests | [6d7b5ef](https://github.com/Kingscliq/split/commit/6d7b5ef) |
 
 Baseline implementation and QA history can be reviewed in the [frontend implementation commit](https://github.com/Kingscliq/split/commit/c6f1eda), [QA report commit](https://github.com/Kingscliq/split/commit/6c16cd6), and [deployment-script commit](https://github.com/Kingscliq/split/commit/1644132). These are baseline commits, not substitutes for the required feedback-driven iteration commits.
 
@@ -259,7 +283,8 @@ The MVP deliberately focuses on one repeatable job: create a collection, share i
 - Reminders and notification options
 - Reusable participant groups and bounded creator history
 - Better USDC acquisition and trustline guidance
-- Event indexing for scalable activity history and analytics
+- QR-code sharing for Split invitations
+- Product analytics beyond the current on-chain admin metrics
 - Mainnet readiness review, security hardening, and storage TTL strategy
 
 Split will remain a focused group payment tracker rather than becoming a full expense-accounting clone.
@@ -287,7 +312,7 @@ Status as of 2026-08-24:
 | Requirement | Current evidence | Status |
 | --- | --- | --- |
 | Public GitHub repository | [Kingscliq/split](https://github.com/Kingscliq/split) | Complete |
-| Live public application | [split-zeta-six.vercel.app](https://split-zeta-six.vercel.app/) returns the public Split application without authentication | Complete |
+| Live public application | [split-zig.vercel.app](https://split-zig.vercel.app/) returns the public Split application without authentication | Complete |
 | 50+ Testnet users | No 50-user evidence package exists yet | Pending |
 | Real transaction activity | One active Split is readable on Testnet; signed payment evidence is not documented | Pending |
 | Active usage proof | No analytics or activity screenshots are stored in the repository | Pending |

@@ -1,0 +1,29 @@
+# Dependencies and framework output
+node_modules/
+.next/
+out/
+coverage/
+
+# Environment and local tooling
+.env
+.env.*
+!.env.example
+*.log
+.vercel/
+
+# Generated and dependency-managed files
+next-env.d.ts
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+AGENTS.md
+
+# Static binary assets
+public/**/*.ico
+public/**/*.png
+public/**/*.jpg
+public/**/*.jpeg
+public/**/*.gif
+public/**/*.webp
+public/**/*.woff
+public/**/*.woff2

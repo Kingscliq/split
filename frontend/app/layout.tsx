@@ -11,13 +11,26 @@ const themeScript = `(function(){try{var saved=localStorage.getItem("split-theme
 export const metadata: Metadata = {
   title: "Split — Group payments without the chase",
   description: "Create a group payment, share the link, and see who has paid on Stellar.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
-      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body><WalletProvider>{children}</WalletProvider></body>
+    <html
+      lang="en"
+      data-theme="dark"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body>
+        <WalletProvider>{children}</WalletProvider>
+      </body>
     </html>
   );
 }
