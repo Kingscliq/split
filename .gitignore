@@ -5,6 +5,9 @@ target/
 .soroban/
 .stellar/
 
+# Supabase CLI-generated project metadata and version cache
+supabase/.temp/
+
 # Node dependencies
 node_modules/
 frontend/node_modules/
