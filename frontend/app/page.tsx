@@ -38,6 +38,12 @@ export default function Home() {
   const currentFunding =
     funding.kind !== "idle" && funding.address === address ? funding : ({ kind: "idle" } as const);
 
+  useEffect(() => {
+    if (funding.kind !== "success") return;
+    const timeout = window.setTimeout(() => setFunding({ kind: "idle" }), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [funding]);
+
   const fundWallet = useCallback(async () => {
     if (!address) return;
     setFunding({ kind: "funding", address });
@@ -121,7 +127,12 @@ export default function Home() {
         </article>
         <article className="hero-card dark-card wallet-overview-card">
           <div className="hero-card-top">
-            <span className="pill pill-muted">Testnet wallet</span>
+            <span
+              className={`pill ${currentFunding.kind === "success" ? "pill-success" : "pill-muted"}`}
+              role={currentFunding.kind === "success" ? "status" : undefined}
+            >
+              {currentFunding.kind === "success" ? "✓ Wallet funded" : "Testnet wallet"}
+            </span>
             <span className="tiny-avatar avatar-coral">S</span>
           </div>
           {restoring ? (
@@ -170,11 +181,7 @@ export default function Home() {
                   </p>
                 )}
               </div>
-              {accountFunded === false ? null : currentFunding.kind === "success" ? (
-                <p className="dashboard-funding-success" role="status">
-                  Wallet funded with Testnet XLM. You’re ready to create a Split.
-                </p>
-              ) : (
+              {accountFunded === false ? null : (
                 <button
                   type="button"
                   className="text-link"

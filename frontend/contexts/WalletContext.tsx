@@ -15,6 +15,7 @@ import { getTokenBalance, TOKEN_CONTRACTS } from "@/lib/split-contract";
 import { isTestnetAccountFunded } from "@/lib/testnet-funding";
 import {
   connectBluxWithEmailCode,
+  connectBluxWithGoogle,
   connectBluxWithPasskey,
   connectionFromBlux,
   type BluxBridge,
@@ -99,15 +100,114 @@ type PendingTransactionApproval = {
   reject: (error: Error) => void;
 };
 
-type AccountStep = "choice" | "email" | "code";
+type AccountStep = "choice" | "more" | "email" | "code";
 
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function authenticationMessage(caught: unknown, fallback: string) {
-  if (!(caught instanceof Error) || !caught.message) return fallback;
-  return caught.message.replace(/^BLUX:\s*/i, "");
+  if (caught instanceof Error && caught.message) return caught.message.replace(/^BLUX:\s*/i, "");
+  if (
+    typeof caught === "object" &&
+    caught !== null &&
+    "message" in caught &&
+    typeof caught.message === "string"
+  ) {
+    return caught.message.replace(/^BLUX:\s*/i, "");
+  }
+  return fallback;
+}
+
+function errorDetails(caught: unknown) {
+  const name = caught instanceof Error ? caught.name : "";
+  return {
+    name: name.toLowerCase(),
+    message: authenticationMessage(caught, "").toLowerCase(),
+  };
+}
+
+function googleAuthenticationMessage(caught: unknown) {
+  const { name, message } = errorDetails(caught);
+  if (message.includes("popup was blocked")) {
+    return "Your browser blocked the Google sign-in window. Allow popups for Split, then try again.";
+  }
+  if (
+    name === "aborterror" ||
+    message.includes("login cancelled") ||
+    message.includes("window was closed")
+  ) {
+    return "Google sign-in was cancelled. Try again when you’re ready.";
+  }
+  if (message.includes("challenge expired") || message.includes("timed out")) {
+    return "Google sign-in took too long. Try again.";
+  }
+  if (message.includes("network") || message.includes("fetch") || message.includes("offline")) {
+    return "Google sign-in could not reach the network. Check your connection and try again.";
+  }
+  return "Google sign-in could not be completed. Try again or continue another way.";
+}
+
+function passkeyAuthenticationMessage(caught: unknown) {
+  const { name, message } = errorDetails(caught);
+  if (
+    name === "notsupportederror" ||
+    message.includes("not supported") ||
+    message.includes("browser environment")
+  ) {
+    return "Passkeys aren’t available in this browser. Use Google or email instead.";
+  }
+  if (name === "securityerror" || message.includes("secure context")) {
+    return "Passkeys require a secure browser connection. Use Google or email instead.";
+  }
+  if (message.includes("already has a passkey")) {
+    return "This account already has a passkey. Use the existing passkey to sign in.";
+  }
+  if (message.includes("verification failed")) {
+    return "We couldn’t verify this passkey. Try again or use Google to access your account.";
+  }
+  if (
+    name === "notallowederror" ||
+    name === "aborterror" ||
+    message.includes("not completed") ||
+    message.includes("cancelled") ||
+    message.includes("timed out")
+  ) {
+    return "Passkey sign-in was cancelled or timed out. Try again or use another method.";
+  }
+  return "Passkey sign-in could not be completed. Try again or use another method.";
+}
+
+function emailSendAuthenticationMessage(caught: unknown) {
+  const { message } = errorDetails(caught);
+  if (
+    message.includes("rate limit") ||
+    message.includes("too many") ||
+    message.includes("token limit")
+  ) {
+    return "Too many codes were requested. Wait a moment, then try again.";
+  }
+  if (message.includes("network") || message.includes("fetch") || message.includes("offline")) {
+    return "We couldn’t send the code. Check your connection and try again.";
+  }
+  return "We couldn’t send a code to that email. Check the address and try again.";
+}
+
+function emailCodeAuthenticationMessage(caught: unknown) {
+  const { message } = errorDetails(caught);
+  if (message.includes("expired") || message.includes("timed out")) {
+    return "That code has expired. Send a new code and try again.";
+  }
+  if (message.includes("invalid code") || message.includes("code is required")) {
+    return "That code is incorrect. Check the six digits in your latest email and try again.";
+  }
+  if (message.includes("rate limit") || message.includes("too many")) {
+    return "Too many attempts were made. Send a new code and try again shortly.";
+  }
+  if (message.includes("network") || message.includes("fetch") || message.includes("offline")) {
+    return "We couldn’t verify the code. Check your connection and try again.";
+  }
+  return "That code could not be verified. Send a new code or try again.";
 }
 
 export function WalletProvider({ children, blux }: { children: ReactNode; blux?: BluxBridge }) {
@@ -117,6 +217,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
   const [emailAddress, setEmailAddress] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [authenticationError, setAuthenticationError] = useState<string | null>(null);
+  const [authenticationIssue, setAuthenticationIssue] = useState<FreighterIssue | null>(null);
   const [transactionApproval, setTransactionApproval] = useState<TransactionApprovalState | null>(
     null,
   );
@@ -287,6 +388,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     setEmailAddress("");
     setEmailCode("");
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
     setChooserOpen(true);
     setError(null);
     setIssue(null);
@@ -298,24 +400,44 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
   const chooseEmail = useCallback(() => {
     setAccountStep("email");
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
+  }, []);
+
+  const chooseGoogle = useCallback(async () => {
+    if (!blux) return;
+    setConnecting(true);
+    setAuthenticationError(null);
+    setAuthenticationIssue(null);
+    try {
+      const next = await connectBluxWithGoogle(blux);
+      applyConnection(next);
+      setChooserOpen(false);
+      finishPending(next.session.address);
+    } catch (caught) {
+      setAuthenticationError(googleAuthenticationMessage(caught));
+    } finally {
+      setConnecting(false);
+    }
+  }, [applyConnection, blux, finishPending]);
+
+  const showOtherWays = useCallback(() => {
+    setAccountStep("more");
+    setAuthenticationError(null);
+    setAuthenticationIssue(null);
   }, []);
 
   const choosePasskey = useCallback(async () => {
     if (!blux) return;
     setConnecting(true);
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
     try {
       const next = await connectBluxWithPasskey(blux);
       applyConnection(next);
       setChooserOpen(false);
       finishPending(next.session.address);
     } catch (caught) {
-      const cancelled = caught instanceof Error && caught.name === "NotAllowedError";
-      setAuthenticationError(
-        cancelled
-          ? "Passkey setup was cancelled. You can try again or use email instead."
-          : authenticationMessage(caught, "Passkey login could not be completed. Try again."),
-      );
+      setAuthenticationError(passkeyAuthenticationMessage(caught));
     } finally {
       setConnecting(false);
     }
@@ -330,15 +452,14 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     }
     setConnecting(true);
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
     try {
       await blux.sendEmailCode(email);
       setEmailAddress(email);
       setEmailCode("");
       setAccountStep("code");
     } catch (caught) {
-      setAuthenticationError(
-        authenticationMessage(caught, "We could not send the code. Try again."),
-      );
+      setAuthenticationError(emailSendAuthenticationMessage(caught));
     } finally {
       setConnecting(false);
     }
@@ -353,15 +474,14 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     }
     setConnecting(true);
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
     try {
       const next = await connectBluxWithEmailCode(blux, emailAddress, code);
       applyConnection(next);
       setChooserOpen(false);
       finishPending(next.session.address);
     } catch (caught) {
-      setAuthenticationError(
-        authenticationMessage(caught, "That code could not be verified. Check it and try again."),
-      );
+      setAuthenticationError(emailCodeAuthenticationMessage(caught));
     } finally {
       setConnecting(false);
     }
@@ -372,6 +492,15 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     setAccountStep("choice");
     setEmailCode("");
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
+  }, [connecting]);
+
+  const backToOtherWays = useCallback(() => {
+    if (connecting) return;
+    setAccountStep("more");
+    setEmailCode("");
+    setAuthenticationError(null);
+    setAuthenticationIssue(null);
   }, [connecting]);
 
   const backToEmail = useCallback(() => {
@@ -379,10 +508,13 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     setAccountStep("email");
     setEmailCode("");
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
   }, [connecting]);
 
   const chooseFreighter = useCallback(async () => {
     setConnecting(true);
+    setAuthenticationError(null);
+    setAuthenticationIssue(null);
     try {
       const next = await connectFreighter();
       applyConnection(next);
@@ -390,9 +522,15 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
       finishPending(next.session.address);
     } catch (caught) {
       const walletIssue = normalizeFreighterIssue(caught);
+      setAuthenticationIssue(walletIssue);
+      setAuthenticationError(
+        walletIssue.code === "missing"
+          ? "Freighter isn’t installed in this browser. Install it, then try again."
+          : walletIssue.code === "access"
+            ? "Freighter connection was cancelled. Approve the request in Freighter, then try again."
+            : walletIssue.message,
+      );
       reportIssue(walletIssue);
-      finishPending(null);
-      setChooserOpen(false);
     } finally {
       setConnecting(false);
     }
@@ -405,6 +543,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     setEmailAddress("");
     setEmailCode("");
     setAuthenticationError(null);
+    setAuthenticationIssue(null);
     finishPending(null);
   }, [connecting, finishPending]);
 
@@ -543,22 +682,80 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
             </button>
             {accountStep === "choice" && (
               <>
-                <p className="eyebrow">Continue to Split</p>
-                <h2 id="wallet-choice-title">How would you like to continue?</h2>
-                <p>
-                  Use a passkey for the fastest return, continue with email, or connect a Stellar
-                  wallet you already use.
-                </p>
+                <p className="eyebrow">Your account</p>
+                <h2 id="wallet-choice-title">Continue to Split</h2>
+                <p>Google is the easiest way to continue across your devices.</p>
                 <div className="wallet-choice-options">
                   <button
                     type="button"
-                    className="wallet-choice-primary"
+                    className="wallet-choice-primary wallet-choice-provider"
+                    onClick={() => void chooseGoogle()}
+                    disabled={connecting || !blux?.isReady}
+                  >
+                    <span className="wallet-choice-google" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path
+                          fill="#4285F4"
+                          d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.38a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.98-4.32 2.98-7.39Z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 22c2.7 0 4.96-.9 6.62-2.38l-3.24-2.53c-.9.6-2.05.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.06v2.6A10 10 0 0 0 12 22Z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M6.4 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.32-1.93v-2.6H3.06A10 10 0 0 0 2 12c0 1.61.38 3.14 1.06 4.53l3.34-2.6Z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.95c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.94 5.47l3.34 2.6c.79-2.36 3-4.12 5.6-4.12Z"
+                        />
+                      </svg>
+                    </span>
+                    <strong>{connecting ? "Opening Google…" : "Continue with Google"}</strong>
+                    <b aria-hidden="true">→</b>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="wallet-choice-more"
+                  onClick={showOtherWays}
+                  disabled={connecting}
+                >
+                  Continue another way <span aria-hidden="true">↓</span>
+                </button>
+                {authenticationError && (
+                  <p className="wallet-choice-error" role="alert">
+                    {authenticationError}
+                  </p>
+                )}
+                {!blux && (
+                  <small className="wallet-choice-note">
+                    Google, passkey, and email login are unavailable until the Blux App ID is
+                    configured.
+                  </small>
+                )}
+              </>
+            )}
+
+            {accountStep === "more" && (
+              <>
+                <button type="button" className="wallet-auth-back" onClick={backToAccountChoice}>
+                  ← Recommended option
+                </button>
+                <p className="eyebrow">Other ways to continue</p>
+                <h2 id="wallet-choice-title">Choose another method</h2>
+                <p>Use a passkey, receive an email code, or connect an existing Stellar wallet.</p>
+                <div className="wallet-choice-options wallet-choice-alternatives">
+                  <button
+                    type="button"
+                    className="wallet-choice-secondary"
                     onClick={() => void choosePasskey()}
                     disabled={connecting || !blux?.isReady}
                   >
                     <span>
                       <strong>{connecting ? "Opening passkey…" : "Continue with passkey"}</strong>
-                      <small>Face ID, fingerprint, or device PIN · Recommended</small>
+                      <small>Fast access on this browser</small>
                     </span>
                     <b aria-hidden="true">→</b>
                   </button>
@@ -570,7 +767,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
                   >
                     <span>
                       <strong>Continue with email</strong>
-                      <small>Receive a one-time code</small>
+                      <small>Separate from Google, even with the same email</small>
                     </span>
                     <b aria-hidden="true">→</b>
                   </button>
@@ -588,19 +785,18 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
                   </button>
                 </div>
                 {authenticationError && (
-                  <p className="wallet-choice-error" role="alert">
-                    {authenticationError}
-                  </p>
+                  <div className="wallet-choice-error" role="alert">
+                    <p>{authenticationError}</p>
+                    {authenticationIssue?.code === "missing" && (
+                      <a href={FREIGHTER_INSTALL_URL} target="_blank" rel="noreferrer">
+                        Install Freighter ↗
+                      </a>
+                    )}
+                  </div>
                 )}
                 <small className="wallet-choice-safety">
-                  Returning? Choose the same method you used before so you reopen the same Testnet
-                  account.
+                  Returning? Use the same method to reopen the same Testnet account.
                 </small>
-                {!blux && (
-                  <small className="wallet-choice-note">
-                    Passkey and email login are unavailable until the Blux App ID is configured.
-                  </small>
-                )}
               </>
             )}
 
@@ -612,8 +808,8 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
                   void sendEmailCode();
                 }}
               >
-                <button type="button" className="wallet-auth-back" onClick={backToAccountChoice}>
-                  ← All options
+                <button type="button" className="wallet-auth-back" onClick={backToOtherWays}>
+                  ← Other ways
                 </button>
                 <p className="eyebrow">Your Split account</p>
                 <h2 id="wallet-choice-title">Continue with email</h2>

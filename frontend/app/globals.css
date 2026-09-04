@@ -963,6 +963,10 @@ button {
   color: var(--control-text);
   background: var(--surface-2);
 }
+.pill-success {
+  color: #c4ffd6;
+  background: #173a25;
+}
 .round-icon {
   width: 34px;
   height: 34px;
@@ -1073,8 +1077,7 @@ button {
   font-size: 18px;
   line-height: 1.25;
 }
-.dashboard-funding p,
-.dashboard-funding-success {
+.dashboard-funding p {
   margin: 0;
   color: var(--muted);
   font-size: 11px;
@@ -1088,13 +1091,6 @@ button {
 }
 .dashboard-funding .dashboard-funding-error {
   color: #ffb2c9;
-}
-.dashboard-funding-success {
-  max-width: 280px;
-  position: relative;
-  z-index: 1;
-  color: #c4ffd6;
-  font-weight: 650;
 }
 .tiny-avatar,
 .avatar {
@@ -2849,14 +2845,61 @@ button {
 .wallet-choice-options > button b {
   font-size: 18px;
 }
+.wallet-choice-google {
+  width: 28px;
+  height: 28px;
+  display: grid !important;
+  place-items: center;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: white;
+  overflow: hidden;
+}
+.wallet-choice-google > svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 18px;
+}
 .wallet-choice-primary {
   border-color: transparent !important;
   background: var(--lime);
   color: var(--ink);
 }
+.wallet-choice-options > button.wallet-choice-provider {
+  min-height: 58px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.wallet-choice-provider > strong {
+  text-align: left;
+}
+.wallet-choice-provider > b {
+  font-weight: 500;
+}
 .wallet-choice-secondary {
   background: var(--surface-2);
   color: var(--control-text);
+}
+.wallet-choice-more {
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--control-text);
+  font-size: 11px;
+  font-weight: 680;
+  text-align: center;
+}
+.wallet-choice-more span {
+  margin-left: 5px;
+  color: var(--lime);
+}
+.wallet-choice-alternatives > button {
+  min-height: 66px;
 }
 .wallet-choice-options > button:disabled {
   cursor: wait;
@@ -2886,6 +2929,19 @@ button {
   color: var(--pink) !important;
   font-size: 11px !important;
   line-height: 1.45 !important;
+}
+.wallet-choice-error p {
+  margin: 0;
+}
+.wallet-choice-error a {
+  display: inline-block;
+  margin-top: 7px;
+  color: var(--lime);
+  font-weight: 750;
+  text-decoration: none;
+}
+.wallet-choice-error a:hover {
+  text-decoration: underline;
 }
 .wallet-auth-form {
   display: grid;

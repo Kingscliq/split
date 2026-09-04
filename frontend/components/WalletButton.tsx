@@ -20,6 +20,7 @@ export function DisconnectWalletButton({ className = "" }: { className?: string 
 export function WalletButton() {
   const {
     address,
+    session,
     provider,
     restoring,
     connecting,
@@ -47,7 +48,11 @@ export function WalletButton() {
           </summary>
           <div className="wallet-menu-panel">
             <div className="wallet-menu-heading">
-              <span>{provider === "blux" ? "Email account on Testnet" : "Wallet on Testnet"}</span>
+              <span>
+                {provider === "blux"
+                  ? `${session?.loginMethod === "google" ? "Google" : session?.loginMethod === "passkey" ? "Passkey" : "Email"} account on Testnet`
+                  : "Wallet on Testnet"}
+              </span>
               <strong>{shortAddress(address)}</strong>
             </div>
             <div className="wallet-menu-balances" aria-live="polite">

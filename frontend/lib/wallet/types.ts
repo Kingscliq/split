@@ -5,7 +5,7 @@ export type WalletSession = {
   provider: WalletProviderId;
   address: string;
   accountType: WalletAccountType;
-  loginMethod: "email" | "passkey" | "wallet";
+  loginMethod: "email" | "google" | "passkey" | "wallet";
 };
 
 export type SignTransactionOptions = {

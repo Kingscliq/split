@@ -13,6 +13,7 @@ export type BluxBridge = {
   user?: BluxUser;
   sendEmailCode: (email: string) => Promise<void>;
   loginWithEmailCode: (email: string, code: string) => Promise<BluxUser>;
+  loginOAuth: (provider: string) => Promise<BluxUser>;
   loginPasskey: () => Promise<BluxUser>;
   logout: () => void;
   profile: () => void;
@@ -40,15 +41,29 @@ export function connectionFromBlux(blux: BluxBridge): WalletConnection | null {
     },
   };
 
+  const authMethod = blux.user?.authMethod?.toLowerCase() ?? "";
+
   return {
     session: {
       provider: "blux",
       address,
       accountType: accountType(address),
-      loginMethod: blux.user?.authMethod?.toLowerCase().includes("passkey") ? "passkey" : "email",
+      loginMethod: authMethod.includes("passkey")
+        ? "passkey"
+        : authMethod.includes("google")
+          ? "google"
+          : "email",
     },
     signer,
   };
+}
+
+export async function connectBluxWithGoogle(blux: BluxBridge): Promise<WalletConnection> {
+  if (!blux.isReady) throw new Error("Google login is still initializing.");
+  const user = await blux.loginOAuth("google");
+  const connection = connectionFromBlux({ ...blux, isAuthenticated: true, user });
+  if (!connection) throw new Error("Google login did not return a Stellar account.");
+  return connection;
 }
 
 export async function connectBluxWithPasskey(blux: BluxBridge): Promise<WalletConnection> {
