@@ -29,7 +29,7 @@ function formatDate(timestamp: bigint): string {
 }
 
 export default function AdminPage() {
-  const { address, connecting, connect } = useWallet();
+  const { address, restoring, connecting, connect } = useWallet();
   const allowed = isAdminWallet(address);
   const [splits, setSplits] = useState<SplitWithParticipants[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,20 +96,30 @@ export default function AdminPage() {
     };
   }, [splits]);
 
+  if (restoring) {
+    return (
+      <AppShell>
+        <section className="admin-gate">
+          <p>Restoring your account…</p>
+        </section>
+      </AppShell>
+    );
+  }
+
   if (!address) {
     return (
       <AppShell>
         <section className="admin-gate">
           <p className="eyebrow">Restricted operations</p>
-          <h1>Admin wallet required.</h1>
-          <p>Connect the approved Freighter Testnet wallet to open the activity dashboard.</p>
+          <h1>Admin account required.</h1>
+          <p>Continue with the approved Testnet account to open the activity dashboard.</p>
           <button
             className="button button-primary"
             type="button"
             onClick={() => void connect()}
             disabled={connecting}
           >
-            {connecting ? "Connecting…" : "Connect admin wallet"}
+            {connecting ? "Continuing…" : "Continue as admin"}
           </button>
         </section>
       </AppShell>
@@ -121,10 +131,10 @@ export default function AdminPage() {
       <AppShell>
         <section className="admin-gate denied">
           <p className="eyebrow">Restricted operations</p>
-          <h1>This wallet is not an admin.</h1>
+          <h1>This account is not an admin.</h1>
           <p>
-            Connected as {shortAddress(address)}. Switch accounts in Freighter to use the approved
-            admin wallet.
+            Connected as {shortAddress(address)}. Log out or disconnect, then continue with the
+            approved admin account.
           </p>
           <Link className="button button-primary" href="/">
             Return to your dashboard

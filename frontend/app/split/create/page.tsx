@@ -14,7 +14,7 @@ const colors = ["pink", "blue", "orange", "lime"];
 
 export default function CreateSplitPage() {
   const router = useRouter();
-  const { address, connect } = useWallet();
+  const { address, connect, signer } = useWallet();
   const [token, setToken] = useState<TokenSymbol>("XLM");
   const [requested, setRequested] = useState("");
   const [finalAmount, setFinalAmount] = useState("");
@@ -115,17 +115,20 @@ export default function CreateSplitPage() {
     if (!creator) return;
     setSubmitting(true);
     try {
-      const result = await createSplit({
-        creator,
-        title: title.trim(),
-        token: TOKEN_CONTRACTS[token],
-        requestedAmount: math.requestedUnits,
-        totalAmount: math.finalUnits,
-        participants: participants.map((participant) => ({
-          address: participant.address.trim(),
-          displayName: participant.name.trim(),
-        })),
-      });
+      const result = await createSplit(
+        {
+          creator,
+          title: title.trim(),
+          token: TOKEN_CONTRACTS[token],
+          requestedAmount: math.requestedUnits,
+          totalAmount: math.finalUnits,
+          participants: participants.map((participant) => ({
+            address: participant.address.trim(),
+            displayName: participant.name.trim(),
+          })),
+        },
+        signer,
+      );
       const receipt = new URLSearchParams({ action: "create", tx: result.hash });
       router.push(`/split/${Number(result.value)}?${receipt.toString()}`);
     } catch (caught) {
@@ -151,7 +154,7 @@ export default function CreateSplitPage() {
       <div className="onboarding-callout">
         <div>
           <strong>New to Stellar Testnet?</strong>
-          <span>Set up Freighter and find your public wallet address before creating a Split.</span>
+          <span>Continue with email—no extension required—or use an existing Stellar wallet.</span>
         </div>
         <Link href="/onboarding">
           Open the 3-minute guide <span>→</span>
@@ -412,8 +415,8 @@ export default function CreateSplitPage() {
           <small className="network-note">
             <span className="status-dot" />{" "}
             {submitting
-              ? "Keep Freighter open while testnet confirms."
-              : "You’ll confirm this transaction in Freighter."}
+              ? "Keep the confirmation window open while Testnet confirms."
+              : "You’ll review and approve this Testnet transaction before it is submitted."}
           </small>
         </aside>
       </div>

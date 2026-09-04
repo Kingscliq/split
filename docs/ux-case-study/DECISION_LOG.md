@@ -96,15 +96,23 @@ anonymized research notes.
 - **Consequences:** Screenshot capture is part of the definition of done for each workstream.
 - **Validation:** Each completed row in `BEFORE_AFTER_MAP.md` links a passed behavior to both V1 and V2 evidence.
 
+### D-008 — Use a provider-neutral adapter with Blux as the embedded-wallet candidate
+
+- **Status:** Accepted for Testnet proof of capability
+- **Date:** 2026-09-03
+- **Problem:** V2 requires extension-free onboarding, but V1 imports Freighter directly in both wallet state and transaction signing. Selecting a provider without an application-owned boundary would replace one wallet lock-in with another.
+- **Evidence:** `EMBEDDED_WALLET_ARCHITECTURE_SPIKE.md`; V1 wallet and mobile feedback; direct inspection of `frontend/contexts/WalletContext.tsx` and `frontend/lib/split-contract.ts`.
+- **Decision:** Introduce a Split-owned wallet adapter. Use Blux as the primary embedded-wallet candidate and keep a Freighter adapter as the secondary existing-wallet path. Use Privy user-owned Stellar wallets as the fallback if Blux fails custody, recovery, portability, or transaction proof gates.
+- **Why:** Blux has the closest documented fit for a Stellar/Soroban React product and can return a signed XDR into Split's existing transaction pipeline. The adapter preserves the tested contract client and makes the provider replaceable.
+- **Consequences:** No page-level redesign should depend on Blux until the proof passes. Blux's public custody, recovery, export, deletion, and pricing gaps require written confirmation. Mainnet is not approved by this decision.
+- **Validation:** Email onboarding produces a stable wallet; the same wallet returns across supported sessions/devices; embedded and Freighter accounts create and pay each other's Splits; transactions confirm and index; failure/mobile cases pass; security and portability questions have acceptable answers.
+
 ## Open architecture decisions
 
-Create a new numbered decision entry after the embedded-wallet spike for:
+Create a new numbered decision entry after the live provider proof for:
 
-- provider selection
-- custody model
-- authentication methods
-- recovery and account portability
-- session duration and logout behavior
-- transaction-policy and confirmation design
-- data retention and deletion behavior
-
+- final Blux approval or fallback activation
+- verified provider custody and recovery behavior
+- passkey account-linking behavior
+- exact session duration
+- confirmed data-retention and deletion behavior

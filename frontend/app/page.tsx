@@ -13,8 +13,16 @@ import {
 } from "@/lib/split-contract";
 
 export default function Home() {
-  const { address, connecting, balances, balanceLoading, balanceError, connect, refreshBalances } =
-    useWallet();
+  const {
+    address,
+    restoring,
+    connecting,
+    balances,
+    balanceLoading,
+    balanceError,
+    connect,
+    refreshBalances,
+  } = useWallet();
   const [splits, setSplits] = useState<SplitRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +94,12 @@ export default function Home() {
             <span className="pill pill-muted">Testnet wallet</span>
             <span className="tiny-avatar avatar-coral">S</span>
           </div>
-          {address ? (
+          {restoring ? (
+            <div>
+              <p className="card-label">Restoring your account</p>
+              <p className="wallet-connect-copy">Checking your saved Split session…</p>
+            </div>
+          ) : address ? (
             <>
               <div>
                 <p className="card-label">Available balance</p>
@@ -123,7 +136,7 @@ export default function Home() {
               <div>
                 <p className="card-label">Your balance at a glance</p>
                 <p className="wallet-connect-copy">
-                  Connect your wallet to see XLM and USDC before creating or paying a Split.
+                  Continue to see your XLM and USDC balance before creating or paying a Split.
                 </p>
               </div>
               <button
@@ -132,7 +145,7 @@ export default function Home() {
                 onClick={() => void connect()}
                 disabled={connecting}
               >
-                {connecting ? "Connecting…" : "Connect wallet"} <span>→</span>
+                {connecting ? "Continuing…" : "Continue"} <span>→</span>
               </button>
             </>
           )}
@@ -147,11 +160,12 @@ export default function Home() {
           </div>
           <span className="pill pill-muted">Latest 50</span>
         </div>
-        {!address && (
+        {restoring && <div className="contract-state">Restoring your account…</div>}
+        {!restoring && !address && (
           <div className="contract-state">
-            <p>Connect your wallet to see only the Splits you created or joined.</p>
+            <p>Continue to see only the Splits you created or joined.</p>
             <button type="button" onClick={() => void connect()} disabled={connecting}>
-              {connecting ? "Connecting…" : "Connect wallet"}
+              {connecting ? "Continuing…" : "Continue"}
             </button>
           </div>
         )}

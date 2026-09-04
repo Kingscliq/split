@@ -47,7 +47,7 @@ export default function SplitDetailPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const splitId = Number(params.id);
-  const { address, connect } = useWallet();
+  const { address, restoring, connect, signer } = useWallet();
   const [split, setSplit] = useState<SplitRecord | null>(null);
   const [participants, setParticipants] = useState<ParticipantShare[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,7 +201,7 @@ export default function SplitDetailPage() {
         return;
       }
 
-      const result = await payShare(splitId, payer, remaining);
+      const result = await payShare(splitId, payer, remaining, signer);
       recordReceipt("pay", result.hash);
       await Promise.all([load(), loadWalletBalance()]);
     } catch (caught) {
@@ -234,7 +234,7 @@ export default function SplitDetailPage() {
     if (creator !== split.creator) return setCloseError("Only the creator can close this split.");
     setTransaction("close");
     try {
-      const result = await closeSplit(splitId, creator);
+      const result = await closeSplit(splitId, creator, signer);
       recordReceipt("close", result.hash);
       await load();
     } catch (caught) {
@@ -293,13 +293,19 @@ export default function SplitDetailPage() {
       </AppShell>
     );
   if (!split) return null;
+  if (restoring)
+    return (
+      <AppShell>
+        <div className="contract-state detail-state">Restoring your account…</div>
+      </AppShell>
+    );
   if (!address)
     return (
       <AppShell>
         <div className="contract-state detail-state">
-          <p>Connect your wallet to confirm that this Split is assigned to you.</p>
+          <p>Continue to confirm that this Split is assigned to your account.</p>
           <button type="button" onClick={() => void connect()}>
-            Connect wallet
+            Continue
           </button>
         </div>
       </AppShell>
@@ -311,7 +317,7 @@ export default function SplitDetailPage() {
     return (
       <AppShell>
         <div className="contract-state detail-state error-state">
-          <p>This Split is not assigned to the connected wallet.</p>
+          <p>This Split is not assigned to this account.</p>
           <Link href="/split/create">Create your own Split →</Link>
         </div>
       </AppShell>
@@ -442,7 +448,7 @@ export default function SplitDetailPage() {
                 ? `Send ${ownShare.displayName || "your"} share`
                 : address
                   ? "You’re not in this split"
-                  : "Connect your wallet"}
+                  : "Continue to pay"}
             </h2>
             <p>{symbol} goes directly to the Split creator. The contract never holds the funds.</p>
             <Link className="pay-guide-link" href="/onboarding">
@@ -514,12 +520,12 @@ export default function SplitDetailPage() {
             {transaction === "pay"
               ? "Checking balance…"
               : !address
-                ? "Connect to pay"
+                ? "Continue to pay"
                 : ownShare
                   ? remainingShare > 0n
                     ? "Pay remaining share"
                     : "Share paid"
-                  : "Check connected wallet"}{" "}
+                  : "Check current account"}{" "}
             <span>→</span>
           </button>
           {payIssue && (
@@ -528,7 +534,7 @@ export default function SplitDetailPage() {
                 {payIssue.kind === "funding"
                   ? "Wallet needs funds"
                   : payIssue.kind === "not_participant"
-                    ? "Wrong wallet connected"
+                    ? "Wrong account"
                     : "Payment needs attention"}
               </strong>
               <span>{payIssue.message}</span>
@@ -552,7 +558,7 @@ export default function SplitDetailPage() {
                 )}
                 {payIssue.kind === "transaction" && (
                   <button type="button" onClick={() => void pay()} disabled={transaction !== null}>
-                    {address ? "Try payment again" : "Try wallet connection again"}
+                    {address ? "Try payment again" : "Try account connection again"}
                   </button>
                 )}
               </div>
@@ -560,7 +566,9 @@ export default function SplitDetailPage() {
           )}
           <small className="network-note dark-note">
             <span className="status-dot" />{" "}
-            {address ? `Connected · ${shortAddress(address)}` : "Freighter · Stellar testnet"}
+            {address
+              ? `Connected · ${shortAddress(address)}`
+              : "Email or existing wallet · Stellar Testnet"}
           </small>
         </aside>
       </div>

@@ -5,18 +5,18 @@ import { FriendbotFunding } from "@/components/FriendbotFunding";
 const steps = [
   {
     number: "01",
-    title: "Install or open Freighter",
-    body: "Freighter is the Stellar wallet Split uses to connect your account and request transaction signatures.",
+    title: "Choose how to continue",
+    body: "Continue with email for the simplest setup, or use an existing Stellar wallet if you already have Freighter.",
   },
   {
     number: "02",
-    title: "Create your wallet safely",
-    body: "Create a wallet or use an account you already control. Store the recovery phrase offline and never paste it into Split, a form, or a chat.",
+    title: "Use email—no extension required",
+    body: "Enter your email and the one-time code sent to you. Split restores the same embedded Testnet account when you return with that email.",
   },
   {
     number: "03",
-    title: "Switch to Testnet",
-    body: "Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split. Split will reject a wallet that is connected to the public network.",
+    title: "Or connect Freighter on Testnet",
+    body: "Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split and choose Use an existing Stellar wallet.",
   },
   {
     number: "04",
@@ -33,8 +33,8 @@ export default function OnboardingPage() {
           <p className="eyebrow">Stellar Testnet setup</p>
           <h1>Get ready to use Split.</h1>
           <p className="guide-intro">
-            Set up a test wallet in a few minutes. Testnet XLM has no real-world value, so you can
-            learn the payment flow without spending real money.
+            Continue with email or an existing Stellar wallet in a few minutes. Testnet XLM has no
+            real-world value, so you can learn the payment flow without spending real money.
           </p>
         </div>
         <span className="guide-time">About 3 minutes</span>
@@ -43,10 +43,10 @@ export default function OnboardingPage() {
       <section className="guide-safety" aria-labelledby="safety-title">
         <span aria-hidden="true">!</span>
         <div>
-          <h2 id="safety-title">Your recovery phrase stays private</h2>
+          <h2 id="safety-title">Your wallet credentials stay private</h2>
           <p>
-            Split only needs your public wallet address. No Split page, organizer, feedback form, or
-            support message should ever ask for your secret key or recovery phrase.
+            Email login only asks for a one-time code. If you use an external wallet, never share
+            its password, secret key, or recovery phrase. Split only uses your public G… address.
           </p>
         </div>
       </section>
@@ -71,13 +71,13 @@ export default function OnboardingPage() {
         </div>
         <ul>
           <li>
-            <span aria-hidden="true">✓</span> Freighter is installed and unlocked
+            <span aria-hidden="true">✓</span> You chose email or an existing Stellar wallet
           </li>
           <li>
             <span aria-hidden="true">✓</span> The selected network says Testnet
           </li>
           <li>
-            <span aria-hidden="true">✓</span> Freighter shows a Testnet XLM balance
+            <span aria-hidden="true">✓</span> Your account shows a Testnet XLM balance
           </li>
           <li>
             <span aria-hidden="true">✓</span> You copied only your public G… address
@@ -90,15 +90,15 @@ export default function OnboardingPage() {
             target="_blank"
             rel="noreferrer"
           >
-            Open official setup guide <span>↗</span>
+            Open Freighter setup guide <span>↗</span>
           </a>
           <Link className="button guide-secondary" href="/split/create">
             Create a split
           </Link>
         </div>
         <p className="guide-next-note">
-          Already received a Split link? Return to that link after completing this checklist and
-          connect your wallet there.
+          Already received a Split link? Return to it and continue with the same email or wallet
+          account that was assigned to the Split.
         </p>
       </section>
     </AppShell>

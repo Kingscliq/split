@@ -10,7 +10,7 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
-import { signTransaction } from "@stellar/freighter-api";
+import type { WalletSigner } from "@/lib/wallet/types";
 
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
 export const NETWORK_NAME = "TESTNET";
@@ -124,7 +124,7 @@ function contractError(error: unknown): Error {
 
 function transactionResultCode(result: xdr.TransactionResult): string {
   try {
-    return String(result.result().switch().name);
+    return result.result.type;
   } catch {
     return "unknownTransactionError";
   }
@@ -183,16 +183,15 @@ async function read(method: string, args: xdr.ScVal[] = []) {
   return readFrom(contract, method, args);
 }
 
-async function write(source: string, method: string, args: xdr.ScVal[]) {
+async function write(source: string, method: string, args: xdr.ScVal[], signer: WalletSigner) {
   try {
     const transaction = await buildInvocation(source, method, args);
     const prepared = await server.prepareTransaction(transaction);
-    const signed = await signTransaction(prepared.toXDR(), {
+    const signedTransactionXdr = await signer.signTransaction(prepared.toXDR(), {
       address: source,
       networkPassphrase: NETWORK_PASSPHRASE,
     });
-    if (signed.error) throw new Error(signed.error.message);
-    const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE);
+    const signedTransaction = TransactionBuilder.fromXDR(signedTransactionXdr, NETWORK_PASSPHRASE);
     const submitted = await server.sendTransaction(signedTransaction);
     if (submitted.status === "ERROR") {
       const resultCode = submitted.errorResult
@@ -390,32 +389,50 @@ function participantScVal(participant: NewParticipant) {
   );
 }
 
-export async function createSplit(input: {
-  creator: string;
-  title: string;
-  token: string;
-  requestedAmount: bigint;
-  totalAmount: bigint;
-  participants: NewParticipant[];
-}) {
-  return write(input.creator, "create_split", [
-    new Address(input.creator).toScVal(),
-    nativeToScVal(input.title),
-    new Address(input.token).toScVal(),
-    nativeToScVal(input.requestedAmount, { type: "i128" }),
-    nativeToScVal(input.totalAmount, { type: "i128" }),
-    xdr.ScVal.scvVec(input.participants.map(participantScVal)),
-  ]);
+export async function createSplit(
+  input: {
+    creator: string;
+    title: string;
+    token: string;
+    requestedAmount: bigint;
+    totalAmount: bigint;
+    participants: NewParticipant[];
+  },
+  signer: WalletSigner,
+) {
+  return write(
+    input.creator,
+    "create_split",
+    [
+      new Address(input.creator).toScVal(),
+      nativeToScVal(input.title),
+      new Address(input.token).toScVal(),
+      nativeToScVal(input.requestedAmount, { type: "i128" }),
+      nativeToScVal(input.totalAmount, { type: "i128" }),
+      xdr.ScVal.scvVec(input.participants.map(participantScVal)),
+    ],
+    signer,
+  );
 }
 
-export async function payShare(splitId: number, payer: string, amount: bigint) {
-  return write(payer, "pay_share", [
-    nativeToScVal(splitId, { type: "u32" }),
-    new Address(payer).toScVal(),
-    nativeToScVal(amount, { type: "i128" }),
-  ]);
+export async function payShare(
+  splitId: number,
+  payer: string,
+  amount: bigint,
+  signer: WalletSigner,
+) {
+  return write(
+    payer,
+    "pay_share",
+    [
+      nativeToScVal(splitId, { type: "u32" }),
+      new Address(payer).toScVal(),
+      nativeToScVal(amount, { type: "i128" }),
+    ],
+    signer,
+  );
 }
 
-export async function closeSplit(splitId: number, creator: string) {
-  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })]);
+export async function closeSplit(splitId: number, creator: string, signer: WalletSigner) {
+  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })], signer);
 }

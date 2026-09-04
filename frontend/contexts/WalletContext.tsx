@@ -1,14 +1,6 @@
 "use client";
 
 import {
-  getAddress,
-  getNetworkDetails,
-  isAllowed,
-  isConnected,
-  requestAccess,
-  WatchWalletChanges,
-} from "@stellar/freighter-api";
-import {
   createContext,
   useCallback,
   useContext,
@@ -16,33 +8,52 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
-import { getTokenBalance, NETWORK_PASSPHRASE, TOKEN_CONTRACTS } from "@/lib/split-contract";
+import { getTokenBalance, TOKEN_CONTRACTS } from "@/lib/split-contract";
+import { connectBlux, connectionFromBlux, type BluxBridge } from "@/lib/wallet/blux-adapter";
+import {
+  connectFreighter,
+  FREIGHTER_INSTALL_URL,
+  normalizeFreighterIssue,
+  restoreFreighter,
+  watchFreighter,
+  type FreighterIssue,
+} from "@/lib/wallet/freighter-adapter";
+import type {
+  WalletConnection,
+  WalletProviderId,
+  WalletSession,
+  WalletSigner,
+} from "@/lib/wallet/types";
 
-export const FREIGHTER_INSTALL_URL = "https://www.freighter.app/";
-const WALLET_DISCONNECTED_KEY = "split-wallet-disconnected";
+export { FREIGHTER_INSTALL_URL };
+export type WalletIssue = FreighterIssue;
 
-function rememberDisconnected(disconnected: boolean) {
+const ACTIVE_PROVIDER_KEY = "split-active-wallet-provider";
+const FREIGHTER_DISCONNECTED_KEY = "split-wallet-disconnected";
+
+function storageGet(key: string) {
   try {
-    if (disconnected) window.localStorage.setItem(WALLET_DISCONNECTED_KEY, "true");
-    else window.localStorage.removeItem(WALLET_DISCONNECTED_KEY);
+    return window.localStorage.getItem(key);
   } catch {
-    // The in-memory state still works when browser storage is unavailable.
+    return null;
   }
 }
 
-function wasDisconnected() {
+function storageSet(key: string, value: string | null) {
   try {
-    return window.localStorage.getItem(WALLET_DISCONNECTED_KEY) === "true";
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
   } catch {
-    return false;
+    // In-memory wallet state remains usable when storage is unavailable.
   }
 }
 
-export type WalletIssue = {
-  code: "missing" | "wrong_network" | "access" | "unknown";
-  message: string;
-};
+function activeProvider(): WalletProviderId | null {
+  const value = storageGet(ACTIVE_PROVIDER_KEY);
+  return value === "blux" || value === "freighter" ? value : null;
+}
 
 export type WalletBalances = {
   XLM: bigint;
@@ -51,6 +62,10 @@ export type WalletBalances = {
 
 type WalletContextValue = {
   address: string | null;
+  session: WalletSession | null;
+  signer: WalletSigner;
+  provider: WalletProviderId | null;
+  restoring: boolean;
   connecting: boolean;
   error: string | null;
   issue: WalletIssue | null;
@@ -59,20 +74,70 @@ type WalletContextValue = {
   balanceError: string | null;
   connect: (onError?: (issue: WalletIssue) => void) => Promise<string | null>;
   disconnect: () => void;
+  openProfile: () => void;
   refreshBalances: () => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
+type PendingConnection = {
+  resolve: (address: string | null) => void;
+  onError?: (issue: WalletIssue) => void;
+};
+
+export function WalletProvider({ children, blux }: { children: ReactNode; blux?: BluxBridge }) {
+  const [connection, setConnection] = useState<WalletConnection | null>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issue, setIssue] = useState<WalletIssue | null>(null);
   const [balances, setBalances] = useState<WalletBalances | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
-  const manuallyDisconnected = useRef(false);
+  const [freighterChecked, setFreighterChecked] = useState(false);
+  const [bluxChecked, setBluxChecked] = useState(!blux);
+  const pendingConnection = useRef<PendingConnection | null>(null);
+  const connectionRef = useRef<WalletConnection | null>(null);
+
+  const address = connection?.session.address ?? null;
+  const provider = connection?.session.provider ?? null;
+  const restoring = !freighterChecked || !bluxChecked;
+  const signer = useMemo<WalletSigner>(
+    () => ({
+      async signTransaction(transactionXdr, options) {
+        const activeSigner = connectionRef.current?.signer;
+        if (!activeSigner)
+          throw new Error("Continue with an account before approving this action.");
+        return activeSigner.signTransaction(transactionXdr, options);
+      },
+    }),
+    [],
+  );
+
+  useEffect(() => {
+    connectionRef.current = connection;
+  }, [connection]);
+
+  const applyConnection = useCallback((next: WalletConnection) => {
+    connectionRef.current = next;
+    setConnection(next);
+    storageSet(ACTIVE_PROVIDER_KEY, next.session.provider);
+    if (next.session.provider === "freighter") {
+      storageSet(FREIGHTER_DISCONNECTED_KEY, null);
+    }
+    setError(null);
+    setIssue(null);
+  }, []);
+
+  const clearWalletData = useCallback(() => {
+    connectionRef.current = null;
+    setConnection(null);
+    setBalances(null);
+    setBalanceError(null);
+    setBalanceLoading(false);
+    setError(null);
+    setIssue(null);
+  }, []);
 
   const refreshBalances = useCallback(async () => {
     if (!address) {
@@ -97,71 +162,88 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [address]);
 
-  const connect = useCallback(async (onError?: (issue: WalletIssue) => void) => {
-    manuallyDisconnected.current = false;
-    rememberDisconnected(false);
-    setConnecting(true);
-    setError(null);
-    setIssue(null);
-    try {
-      const installed = await isConnected();
-      if (!installed.isConnected) {
-        const missing: WalletIssue = {
-          code: "missing",
-          message: "Freighter is not installed. Install it to connect your Stellar Testnet wallet.",
-        };
-        throw missing;
-      }
-      const access = await requestAccess();
-      if (access.error) {
-        const denied: WalletIssue = { code: "access", message: access.error.message };
-        throw denied;
-      }
-      const network = await getNetworkDetails();
-      if (network.error) {
-        const unknown: WalletIssue = { code: "unknown", message: network.error.message };
-        throw unknown;
-      }
-      if (network.networkPassphrase !== NETWORK_PASSPHRASE) {
-        const wrongNetwork: WalletIssue = {
-          code: "wrong_network",
-          message: `Freighter is on ${network.network || "another network"}. Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split—it will reconnect automatically.`,
-        };
-        throw wrongNetwork;
-      }
-      setAddress(access.address);
-      return access.address;
-    } catch (caught) {
-      const walletIssue: WalletIssue =
-        typeof caught === "object" && caught !== null && "code" in caught && "message" in caught
-          ? (caught as WalletIssue)
-          : {
-              code: "unknown",
-              message: caught instanceof Error ? caught.message : "Could not connect Freighter.",
-            };
-      if (onError) {
-        onError(walletIssue);
-      } else {
-        setError(walletIssue.message);
-        setIssue(walletIssue);
-      }
-      return null;
-    } finally {
-      setConnecting(false);
+  const reportIssue = useCallback((walletIssue: WalletIssue) => {
+    const pending = pendingConnection.current;
+    if (pending?.onError) pending.onError(walletIssue);
+    else {
+      setError(walletIssue.message);
+      setIssue(walletIssue);
     }
   }, []);
 
-  const disconnect = useCallback(() => {
-    manuallyDisconnected.current = true;
-    rememberDisconnected(true);
-    setAddress(null);
+  const finishPending = useCallback((result: string | null) => {
+    pendingConnection.current?.resolve(result);
+    pendingConnection.current = null;
+  }, []);
+
+  const connect = useCallback((onError?: (walletIssue: WalletIssue) => void) => {
+    if (connectionRef.current) {
+      return Promise.resolve(connectionRef.current.session.address);
+    }
+    pendingConnection.current?.resolve(null);
+    setChooserOpen(true);
     setError(null);
     setIssue(null);
-    setConnecting(false);
-    setBalances(null);
-    setBalanceError(null);
-    setBalanceLoading(false);
+    return new Promise<string | null>((resolve) => {
+      pendingConnection.current = { resolve, onError };
+    });
   }, []);
+
+  const chooseEmail = useCallback(async () => {
+    if (!blux) return;
+    setConnecting(true);
+    try {
+      const next = await connectBlux(blux);
+      applyConnection(next);
+      setChooserOpen(false);
+      finishPending(next.session.address);
+    } catch (caught) {
+      const walletIssue: WalletIssue = {
+        code: "unknown",
+        message: caught instanceof Error ? caught.message : "Could not continue with email.",
+      };
+      reportIssue(walletIssue);
+      finishPending(null);
+    } finally {
+      setConnecting(false);
+    }
+  }, [applyConnection, blux, finishPending, reportIssue]);
+
+  const chooseFreighter = useCallback(async () => {
+    setConnecting(true);
+    try {
+      const next = await connectFreighter();
+      applyConnection(next);
+      setChooserOpen(false);
+      finishPending(next.session.address);
+    } catch (caught) {
+      const walletIssue = normalizeFreighterIssue(caught);
+      reportIssue(walletIssue);
+      finishPending(null);
+      setChooserOpen(false);
+    } finally {
+      setConnecting(false);
+    }
+  }, [applyConnection, finishPending, reportIssue]);
+
+  const closeChooser = useCallback(() => {
+    if (connecting) return;
+    setChooserOpen(false);
+    finishPending(null);
+  }, [connecting, finishPending]);
+
+  const disconnect = useCallback(() => {
+    if (connectionRef.current?.session.provider === "blux") blux?.logout();
+    if (connectionRef.current?.session.provider === "freighter") {
+      storageSet(FREIGHTER_DISCONNECTED_KEY, "true");
+    }
+    storageSet(ACTIVE_PROVIDER_KEY, null);
+    clearWalletData();
+  }, [blux, clearWalletData]);
+
+  const openProfile = useCallback(() => {
+    if (connectionRef.current?.session.provider === "blux") blux?.profile();
+  }, [blux]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void refreshBalances(), 0);
@@ -169,55 +251,67 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [refreshBalances]);
 
   useEffect(() => {
-    let watcher: WatchWalletChanges | null = null;
     let disposed = false;
-
     void (async () => {
-      manuallyDisconnected.current = wasDisconnected();
-      const installed = await isConnected();
-      if (!installed.isConnected || disposed) return;
-      const permission = await isAllowed();
-      if (disposed) return;
-      if (permission.isAllowed && !manuallyDisconnected.current) {
-        const current = await getAddress();
-        const network = await getNetworkDetails();
-        if (!current.error && !network.error && network.networkPassphrase === NETWORK_PASSPHRASE) {
-          setAddress(current.address);
-        }
+      const preferred = activeProvider();
+      const manuallyDisconnected = storageGet(FREIGHTER_DISCONNECTED_KEY) === "true";
+      if ((preferred === "freighter" || (!preferred && !blux)) && !manuallyDisconnected) {
+        const restored = await restoreFreighter();
+        if (!disposed && restored) applyConnection(restored);
       }
-
-      // Start watching even before authorization. Once requestAccess succeeds,
-      // this detects account/network changes without another page refresh.
-      watcher = new WatchWalletChanges(1200);
-      watcher.watch((wallet) => {
-        if (disposed || wallet.error || manuallyDisconnected.current) return;
-        if (wallet.address && wallet.networkPassphrase === NETWORK_PASSPHRASE) {
-          setAddress(wallet.address);
-          setError(null);
-          setIssue(null);
-          return;
-        }
-        setAddress(null);
-        if (wallet.address && wallet.networkPassphrase) {
-          const wrongNetwork: WalletIssue = {
-            code: "wrong_network",
-            message: `Freighter is on ${wallet.network || "another network"}. Open Freighter, click the hamburger menu (or globe/network icon), open Networks, and select Testnet. Then return to Split—it will reconnect automatically.`,
-          };
-          setError(wrongNetwork.message);
-          setIssue(wrongNetwork);
-        }
-      });
+      if (!disposed) setFreighterChecked(true);
     })();
-
     return () => {
       disposed = true;
-      watcher?.stop();
     };
-  }, []);
+  }, [applyConnection, blux]);
 
-  const value = useMemo(
+  useEffect(() => {
+    if (!blux) return;
+    if (!blux.isReady) return;
+    const timeout = window.setTimeout(() => {
+      setBluxChecked(true);
+
+      const preferred = activeProvider();
+      if (blux.isAuthenticated && preferred !== "freighter") {
+        try {
+          const restored = connectionFromBlux(blux);
+          if (restored) applyConnection(restored);
+        } catch (caught) {
+          setError(caught instanceof Error ? caught.message : "Could not restore email login.");
+        }
+      } else if (preferred === "blux" && !blux.isAuthenticated) {
+        storageSet(ACTIVE_PROVIDER_KEY, null);
+        clearWalletData();
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [applyConnection, blux, clearWalletData]);
+
+  useEffect(() => {
+    return watchFreighter(
+      (next) => {
+        if (storageGet(FREIGHTER_DISCONNECTED_KEY) === "true") return;
+        if (activeProvider() !== "freighter") return;
+        if (next) applyConnection(next);
+        else clearWalletData();
+      },
+      (walletIssue) => {
+        if (activeProvider() !== "freighter") return;
+        setError(walletIssue.message);
+        setIssue(walletIssue);
+      },
+    );
+  }, [applyConnection, clearWalletData]);
+
+  const value = useMemo<WalletContextValue>(
     () => ({
       address,
+      session: connection?.session ?? null,
+      signer,
+      provider,
+      restoring,
       connecting,
       error,
       issue,
@@ -226,10 +320,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       balanceError,
       connect,
       disconnect,
+      openProfile,
       refreshBalances,
     }),
     [
       address,
+      connection,
+      signer,
+      provider,
+      restoring,
       connecting,
       error,
       issue,
@@ -238,10 +337,73 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       balanceError,
       connect,
       disconnect,
+      openProfile,
       refreshBalances,
     ],
   );
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+
+  return (
+    <WalletContext.Provider value={value}>
+      {children}
+      {chooserOpen && (
+        <div className="wallet-choice-backdrop" role="presentation" onMouseDown={closeChooser}>
+          <section
+            className="wallet-choice-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wallet-choice-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="wallet-choice-close"
+              onClick={closeChooser}
+              disabled={connecting}
+              aria-label="Close account options"
+            >
+              ×
+            </button>
+            <p className="eyebrow">Continue to Split</p>
+            <h2 id="wallet-choice-title">How would you like to continue?</h2>
+            <p>
+              Use email for the simplest experience, or connect a Stellar wallet you already use.
+            </p>
+            <div className="wallet-choice-options">
+              <button
+                type="button"
+                className="wallet-choice-primary"
+                onClick={() => void chooseEmail()}
+                disabled={connecting || !blux?.isReady}
+              >
+                <span>
+                  <strong>Continue with email</strong>
+                  <small>No extension required · Recommended</small>
+                </span>
+                <b aria-hidden="true">→</b>
+              </button>
+              <button
+                type="button"
+                className="wallet-choice-secondary"
+                onClick={() => void chooseFreighter()}
+                disabled={connecting}
+              >
+                <span>
+                  <strong>Use an existing Stellar wallet</strong>
+                  <small>Connect with Freighter</small>
+                </span>
+                <b aria-hidden="true">→</b>
+              </button>
+            </div>
+            {!blux && (
+              <small className="wallet-choice-note">
+                Email login is unavailable until the Blux App ID is configured.
+              </small>
+            )}
+          </section>
+        </div>
+      )}
+    </WalletContext.Provider>
+  );
 }
 
 export function useWallet() {

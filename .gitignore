@@ -17,10 +17,13 @@ frontend/node_modules/
 out/
 dist/
 build/
+*.tsbuildinfo
 frontend/.next/
 frontend/out/
 frontend/dist/
 frontend/build/
+experiments/blux-poc/vite.config.js
+experiments/blux-poc/vite.config.d.ts
 
 # Logs
 *.log

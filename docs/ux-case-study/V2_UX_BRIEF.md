@@ -194,8 +194,11 @@ data cryptographically private.
 ### 6.6 Embedded wallet and wallet abstraction
 
 Embedded wallet support is a V2 release requirement, not a future research item.
-The final provider and custody model must be selected through a short technical
-spike before implementation.
+The architecture spike selected Blux as the conditional Testnet candidate,
+Freighter as the secondary existing-wallet path, and Privy as the fallback.
+The custody target is user-owned and non-custodial. Provider due diligence and
+the live contract proof in `EMBEDDED_WALLET_ARCHITECTURE_SPIKE.md` remain release
+gates before the interface is redesigned around this path.
 
 Required experience:
 
@@ -280,10 +283,8 @@ Acceptance criteria:
 
 ## 10. Open decisions
 
-- Embedded-wallet provider and custody model
-- Authentication methods offered at first release
-- Recovery and export behavior
-- Whether existing-wallet connection ships in the first V2 milestone or immediately after embedded onboarding
+- Whether Blux passes the documented custody, recovery, export, deletion, pricing,
+  classic-address, and Split-contract proof gates
+- Whether passkey login links safely to the same wallet as email/social login
 - Exact unauthenticated verification content
 - Whether display names remain on-chain, indexed off-chain, or local presentation metadata
-

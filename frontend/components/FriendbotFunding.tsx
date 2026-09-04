@@ -23,9 +23,9 @@ function fundingError(responseBody: string) {
     normalized.includes("exist") ||
     normalized.includes("balance")
   ) {
-    return "Friendbot could not add more XLM. This wallet may already be funded—check its Testnet balance in Freighter.";
+    return "Friendbot could not add more XLM. This account may already be funded—check its Testnet balance in Split.";
   }
-  return "Friendbot could not fund this wallet. Check Freighter is on Testnet, then try again.";
+  return "Friendbot could not fund this account. Confirm it is using Testnet, then try again.";
 }
 
 export function FriendbotFunding() {
@@ -35,7 +35,7 @@ export function FriendbotFunding() {
   async function fundWallet() {
     setState({ kind: "funding" });
 
-    // Reconnect on every request so WalletContext re-checks the selected network.
+    // Continue through the active account flow before requesting Testnet funds.
     let connectionError: string | null = null;
     const testnetAddress = await connect((issue) => {
       connectionError = issue.message;
@@ -45,7 +45,7 @@ export function FriendbotFunding() {
         kind: "error",
         message:
           connectionError ??
-          "Could not connect Freighter. Check the wallet message above, then try again.",
+          "Could not continue with an account. Check the message above, then try again.",
         source: "wallet",
       });
       return;
@@ -62,7 +62,7 @@ export function FriendbotFunding() {
         message:
           caught instanceof Error
             ? caught.message
-            : "Friendbot could not fund this wallet. Try again shortly.",
+            : "Friendbot could not fund this account. Try again shortly.",
         source: "friendbot",
       });
     }
@@ -107,7 +107,7 @@ export function FriendbotFunding() {
                 ? "Wallet funded ✓"
                 : address
                   ? "Fund my Testnet wallet"
-                  : "Connect and fund wallet"}
+                  : "Continue and fund account"}
           </button>
           <small>No signature or private key is required.</small>
         </div>
@@ -119,8 +119,8 @@ export function FriendbotFunding() {
             ✓
           </span>
           <span>
-            Test XLM was sent to {shortAddress(state.address)}. Open Freighter to confirm the
-            Testnet balance.
+            Test XLM was sent to {shortAddress(state.address)}. Refresh the balance in Split to
+            confirm it.
           </span>
         </div>
       )}
