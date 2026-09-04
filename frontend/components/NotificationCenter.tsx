@@ -155,7 +155,10 @@ export function NotificationBell() {
         aria-expanded={notifications.open}
         onClick={notifications.toggle}
       >
-        <span aria-hidden="true">♢</span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2a6 6 0 0 0-6 6v3.7c0 .7-.3 1.4-.8 1.9l-1.4 1.5A1.1 1.1 0 0 0 4.6 17h14.8a1.1 1.1 0 0 0 .8-1.9l-1.4-1.5a2.8 2.8 0 0 1-.8-1.9V8a6 6 0 0 0-6-6Z" />
+          <path d="M9.4 19a2.7 2.7 0 0 0 5.2 0H9.4Z" />
+        </svg>
         {notifications.unread > 0 && (
           <b>{notifications.unread > 9 ? "9+" : notifications.unread}</b>
         )}

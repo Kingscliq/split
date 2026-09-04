@@ -4,8 +4,7 @@ import { useState } from "react";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { useWallet } from "@/contexts/WalletContext";
 import { shortAddress } from "@/lib/split-contract";
-
-const FRIENDBOT_URL = "https://friendbot.stellar.org";
+import { fundTestnetAccount } from "@/lib/testnet-funding";
 
 type FundingState =
   | { kind: "idle" }
@@ -13,23 +12,8 @@ type FundingState =
   | { kind: "success"; address: string }
   | { kind: "error"; message: string; source: "wallet" | "friendbot" };
 
-function fundingError(responseBody: string) {
-  const normalized = responseBody.toLowerCase();
-  if (normalized.includes("rate") || normalized.includes("limit")) {
-    return "Friendbot is receiving too many requests. Wait a moment, then try again.";
-  }
-  if (
-    normalized.includes("already") ||
-    normalized.includes("exist") ||
-    normalized.includes("balance")
-  ) {
-    return "Friendbot could not add more XLM. This account may already be funded—check its Testnet balance in Split.";
-  }
-  return "Friendbot could not fund this account. Confirm it is using Testnet, then try again.";
-}
-
 export function FriendbotFunding() {
-  const { address, connecting, connect } = useWallet();
+  const { address, connecting, connect, refreshBalances } = useWallet();
   const [state, setState] = useState<FundingState>({ kind: "idle" });
 
   async function fundWallet() {
@@ -52,9 +36,8 @@ export function FriendbotFunding() {
     }
 
     try {
-      const response = await fetch(`${FRIENDBOT_URL}/?addr=${encodeURIComponent(testnetAddress)}`);
-      const responseBody = await response.text();
-      if (!response.ok) throw new Error(fundingError(responseBody));
+      await fundTestnetAccount(testnetAddress);
+      await refreshBalances();
       setState({ kind: "success", address: testnetAddress });
     } catch (caught) {
       setState({
@@ -86,7 +69,7 @@ export function FriendbotFunding() {
             <p className="eyebrow">Testnet funding</p>
             <h2 id="friendbot-title">Fund your test wallet</h2>
             <p>
-              Friendbot creates or tops up your Testnet account with fake XLM. It sends no real
+              Friendbot creates or tops up your Testnet account with test XLM. It sends no real
               money and only receives your public wallet address.
             </p>
             {address && <CopyAddressButton address={address} className="friendbot-address" />}
@@ -119,8 +102,7 @@ export function FriendbotFunding() {
             ✓
           </span>
           <span>
-            Test XLM was sent to {shortAddress(state.address)}. Refresh the balance in Split to
-            confirm it.
+            Test XLM was sent to {shortAddress(state.address)}. You’re ready to create a Split.
           </span>
         </div>
       )}

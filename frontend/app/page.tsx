@@ -11,6 +11,13 @@ import {
   tokenSymbol,
   type SplitRecord,
 } from "@/lib/split-contract";
+import { fundTestnetAccount } from "@/lib/testnet-funding";
+
+type FundingState =
+  | { kind: "idle" }
+  | { kind: "funding"; address: string }
+  | { kind: "success"; address: string }
+  | { kind: "error"; address: string; message: string };
 
 export default function Home() {
   const {
@@ -18,6 +25,7 @@ export default function Home() {
     restoring,
     connecting,
     balances,
+    accountFunded,
     balanceLoading,
     balanceError,
     connect,
@@ -26,6 +34,28 @@ export default function Home() {
   const [splits, setSplits] = useState<SplitRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [funding, setFunding] = useState<FundingState>({ kind: "idle" });
+  const currentFunding =
+    funding.kind !== "idle" && funding.address === address ? funding : ({ kind: "idle" } as const);
+
+  const fundWallet = useCallback(async () => {
+    if (!address) return;
+    setFunding({ kind: "funding", address });
+    try {
+      await fundTestnetAccount(address);
+      await refreshBalances();
+      setFunding({ kind: "success", address });
+    } catch (caught) {
+      setFunding({
+        kind: "error",
+        address,
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Friendbot could not fund this account. Try again shortly.",
+      });
+    }
+  }, [address, refreshBalances]);
 
   const load = useCallback(async () => {
     if (!address) {
@@ -102,8 +132,26 @@ export default function Home() {
           ) : address ? (
             <>
               <div>
-                <p className="card-label">Available balance</p>
-                {balances ? (
+                {accountFunded !== false && <p className="card-label">Available balance</p>}
+                {accountFunded === false ? (
+                  <div className="dashboard-funding">
+                    <strong>Fund your Testnet wallet</strong>
+                    <p>Add test XLM to start using Split.</p>
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      onClick={() => void fundWallet()}
+                      disabled={currentFunding.kind === "funding"}
+                    >
+                      {currentFunding.kind === "funding" ? "Funding wallet…" : "Fund wallet"}
+                    </button>
+                    {currentFunding.kind === "error" && (
+                      <p className="dashboard-funding-error" role="alert">
+                        {currentFunding.message}
+                      </p>
+                    )}
+                  </div>
+                ) : balances ? (
                   <div className="dashboard-balances">
                     <div>
                       <BalanceAmount value={balances.XLM} />
@@ -122,14 +170,20 @@ export default function Home() {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                className="text-link"
-                onClick={() => void refreshBalances()}
-                disabled={balanceLoading}
-              >
-                Refresh balances <span>{balanceLoading ? "…" : "↻"}</span>
-              </button>
+              {accountFunded === false ? null : currentFunding.kind === "success" ? (
+                <p className="dashboard-funding-success" role="status">
+                  Wallet funded with Testnet XLM. You’re ready to create a Split.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() => void refreshBalances()}
+                  disabled={balanceLoading}
+                >
+                  Refresh balances <span>{balanceLoading ? "…" : "↻"}</span>
+                </button>
+              )}
             </>
           ) : (
             <>

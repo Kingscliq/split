@@ -698,11 +698,12 @@ button {
   place-items: center;
   position: relative;
   background: var(--surface);
-  color: var(--control-text);
+  color: var(--cream);
 }
-.notification-bell > span {
-  font-size: 18px;
-  transform: rotate(-15deg);
+.notification-bell > svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 .notification-bell > b {
   min-width: 17px;
@@ -1056,6 +1057,44 @@ button {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+.dashboard-funding {
+  width: min(100%, 310px);
+  margin-top: 12px;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-funding strong {
+  display: block;
+  color: var(--cream);
+  font-size: 18px;
+  line-height: 1.25;
+}
+.dashboard-funding p,
+.dashboard-funding-success {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.dashboard-funding .button {
+  min-width: 150px;
+  min-height: 43px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.dashboard-funding .dashboard-funding-error {
+  color: #ffb2c9;
+}
+.dashboard-funding-success {
+  max-width: 280px;
+  position: relative;
+  z-index: 1;
+  color: #c4ffd6;
+  font-weight: 650;
 }
 .tiny-avatar,
 .avatar {

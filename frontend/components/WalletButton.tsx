@@ -25,6 +25,7 @@ export function WalletButton() {
     connecting,
     issue,
     balances,
+    accountFunded,
     balanceLoading,
     balanceError,
     connect,
@@ -77,7 +78,7 @@ export function WalletButton() {
                   {balanceLoading ? "Reading balances…" : (balanceError ?? "Balance unavailable.")}
                 </small>
               )}
-              {balances?.XLM === 0n && (
+              {(accountFunded === false || balances?.XLM === 0n) && (
                 <Link href="/onboarding#fund-testnet-wallet">Fund Testnet wallet →</Link>
               )}
             </div>

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { TransactionApprovalDialog } from "@/components/TransactionApprovalDialog";
 import { getTokenBalance, TOKEN_CONTRACTS } from "@/lib/split-contract";
+import { isTestnetAccountFunded } from "@/lib/testnet-funding";
 import {
   connectBluxWithEmailCode,
   connectBluxWithPasskey,
@@ -77,6 +78,7 @@ type WalletContextValue = {
   error: string | null;
   issue: WalletIssue | null;
   balances: WalletBalances | null;
+  accountFunded: boolean | null;
   balanceLoading: boolean;
   balanceError: string | null;
   connect: (onError?: (issue: WalletIssue) => void) => Promise<string | null>;
@@ -122,6 +124,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
   const [error, setError] = useState<string | null>(null);
   const [issue, setIssue] = useState<WalletIssue | null>(null);
   const [balances, setBalances] = useState<WalletBalances | null>(null);
+  const [accountFunded, setAccountFunded] = useState<boolean | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [freighterChecked, setFreighterChecked] = useState(false);
@@ -223,6 +226,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     connectionRef.current = null;
     setConnection(null);
     setBalances(null);
+    setAccountFunded(null);
     setBalanceError(null);
     setBalanceLoading(false);
     setError(null);
@@ -232,6 +236,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
   const refreshBalances = useCallback(async () => {
     if (!address) {
       setBalances(null);
+      setAccountFunded(null);
       setBalanceError(null);
       setBalanceLoading(false);
       return;
@@ -239,6 +244,12 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
     setBalanceLoading(true);
     setBalanceError(null);
     try {
+      const funded = await isTestnetAccountFunded(address);
+      setAccountFunded(funded);
+      if (!funded) {
+        setBalances(null);
+        return;
+      }
       const [XLM, USDC] = await Promise.all([
         getTokenBalance(TOKEN_CONTRACTS.XLM, address),
         getTokenBalance(TOKEN_CONTRACTS.USDC, address),
@@ -246,6 +257,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
       setBalances({ XLM, USDC });
     } catch {
       setBalances(null);
+      setAccountFunded(null);
       setBalanceError("Balances are temporarily unavailable.");
     } finally {
       setBalanceLoading(false);
@@ -480,6 +492,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
       error,
       issue,
       balances,
+      accountFunded,
       balanceLoading,
       balanceError,
       connect,
@@ -497,6 +510,7 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
       error,
       issue,
       balances,
+      accountFunded,
       balanceLoading,
       balanceError,
       connect,
