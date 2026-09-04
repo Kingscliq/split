@@ -1,5 +1,5 @@
 import { NETWORK_PASSPHRASE } from "@/lib/split-contract";
-import { accountType, type WalletConnection, type WalletSigner } from "@/lib/wallet/types";
+import { accountType, type WalletConnection, type WalletTransportSigner } from "@/lib/wallet/types";
 
 export type BluxUser = {
   address: string;
@@ -11,7 +11,9 @@ export type BluxBridge = {
   isReady: boolean;
   isAuthenticated: boolean;
   user?: BluxUser;
-  login: () => Promise<BluxUser>;
+  sendEmailCode: (email: string) => Promise<void>;
+  loginWithEmailCode: (email: string, code: string) => Promise<BluxUser>;
+  loginPasskey: () => Promise<BluxUser>;
   logout: () => void;
   profile: () => void;
   signTransaction: (transactionXdr: string, options?: { network: string }) => Promise<unknown>;
@@ -26,7 +28,7 @@ export function connectionFromBlux(blux: BluxBridge): WalletConnection | null {
     );
   }
 
-  const signer: WalletSigner = {
+  const signer: WalletTransportSigner = {
     async signTransaction(transactionXdr) {
       const signed = await blux.signTransaction(transactionXdr, {
         network: NETWORK_PASSPHRASE,
@@ -43,15 +45,27 @@ export function connectionFromBlux(blux: BluxBridge): WalletConnection | null {
       provider: "blux",
       address,
       accountType: accountType(address),
-      loginMethod: "email",
+      loginMethod: blux.user?.authMethod?.toLowerCase().includes("passkey") ? "passkey" : "email",
     },
     signer,
   };
 }
 
-export async function connectBlux(blux: BluxBridge): Promise<WalletConnection> {
+export async function connectBluxWithPasskey(blux: BluxBridge): Promise<WalletConnection> {
+  if (!blux.isReady) throw new Error("Secure passkey login is still initializing.");
+  const user = await blux.loginPasskey();
+  const connection = connectionFromBlux({ ...blux, isAuthenticated: true, user });
+  if (!connection) throw new Error("Passkey login did not return a Stellar account.");
+  return connection;
+}
+
+export async function connectBluxWithEmailCode(
+  blux: BluxBridge,
+  email: string,
+  code: string,
+): Promise<WalletConnection> {
   if (!blux.isReady) throw new Error("Secure email login is still initializing.");
-  const user = blux.isAuthenticated && blux.user ? blux.user : await blux.login();
+  const user = await blux.loginWithEmailCode(email, code);
   const connection = connectionFromBlux({ ...blux, isAuthenticated: true, user });
   if (!connection) throw new Error("Email login did not return a Stellar account.");
   return connection;

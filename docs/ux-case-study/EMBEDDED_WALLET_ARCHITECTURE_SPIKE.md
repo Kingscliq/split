@@ -629,6 +629,10 @@ The provider-neutral V2 integration now also includes:
 - a Split-owned session and signer interface
 - separate Blux and Freighter adapters
 - email-first and existing-wallet choices at the point of action
+- Split-branded email and one-time-code screens using Blux's headless authentication API
+- Split-branded passkey onboarding using Blux's headless WebAuthn flow
+- a Split-owned transaction review and lifecycle dialog for Create, Pay, and Close
+- headless Blux signing only after explicit approval of locally prepared transaction details
 - automatic Blux session restoration after refresh
 - provider-specific **Log out** and **Disconnect wallet** behavior
 - provider-neutral signing for Create Split, Pay Share, and Close Split

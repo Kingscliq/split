@@ -2830,6 +2830,347 @@ button {
   font-size: 9px;
   line-height: 1.45;
 }
+.wallet-choice-safety {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+}
+.wallet-choice-error {
+  margin: 12px 0 0 !important;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 99, 145, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 99, 145, 0.08);
+  color: var(--pink) !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+.wallet-auth-form {
+  display: grid;
+  gap: 12px;
+}
+.wallet-auth-form > p:not(.eyebrow) {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.wallet-auth-form > p strong {
+  color: var(--cream);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.wallet-auth-form label {
+  margin-top: 5px;
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.wallet-auth-form input {
+  width: 100%;
+  height: 54px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  outline: none;
+  background: var(--surface-2);
+  color: var(--control-text);
+  font: inherit;
+  font-size: 16px;
+}
+.wallet-auth-form input:focus {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 3px rgba(220, 255, 94, 0.14);
+}
+.wallet-auth-form input:disabled {
+  opacity: 0.65;
+}
+.wallet-auth-form .wallet-auth-code {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 760;
+  letter-spacing: 0.28em;
+}
+.wallet-auth-submit {
+  min-height: 54px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--lime);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+}
+.wallet-auth-submit:disabled,
+.wallet-auth-resend:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+.wallet-auth-back,
+.wallet-auth-resend {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.wallet-auth-back {
+  margin: -3px 0 2px;
+}
+.wallet-auth-resend {
+  justify-self: center;
+  color: var(--lime);
+}
+.wallet-auth-form > small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+}
+.wallet-auth-error {
+  margin: 0 !important;
+  color: var(--pink) !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+}
+
+.transaction-approval-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+}
+.transaction-approval-dialog {
+  width: min(100%, 520px);
+  max-height: min(90vh, 780px);
+  padding: 30px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--surface);
+  color: var(--cream);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.48);
+}
+.transaction-approval-dialog > h2,
+.transaction-stage-view h2 {
+  margin: 8px 0 10px;
+  color: var(--cream);
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+.transaction-approval-dialog > p:not(.eyebrow),
+.transaction-stage-view > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.transaction-review-purpose {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: grid;
+  gap: 4px;
+  background: var(--surface-2);
+}
+.transaction-review-purpose span,
+.transaction-review-participants > div > span,
+.transaction-review-money dt,
+.transaction-review-technical dt {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.transaction-review-purpose strong {
+  font-size: 17px;
+}
+.transaction-review-purpose small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.transaction-review-money {
+  margin: 10px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.transaction-review-money > div {
+  padding: 15px 16px;
+  border-radius: 16px;
+  background: var(--lime);
+  color: var(--ink);
+}
+.transaction-review-money dt {
+  color: rgba(0, 0, 0, 0.56);
+}
+.transaction-review-money dd {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+.transaction-review-participants {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.transaction-review-participants > div {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  background: var(--surface-2);
+}
+.transaction-review-participants > div small {
+  color: var(--lime);
+  font-weight: 800;
+}
+.transaction-review-participants ul {
+  max-height: 174px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.transaction-review-participants li {
+  padding: 11px 15px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.transaction-review-participants li > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.transaction-review-participants li strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.transaction-review-participants li small {
+  color: var(--muted);
+  font-size: 9px;
+}
+.transaction-review-participants li b {
+  flex: 0 0 auto;
+  color: var(--lime);
+  font-size: 11px;
+}
+.transaction-review-technical {
+  margin: 14px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.transaction-review-technical div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.transaction-review-technical dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--cream);
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.transaction-approval-actions {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 10px;
+}
+.transaction-approval-actions button,
+.transaction-stage-view > button {
+  min-height: 52px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 780;
+}
+.transaction-approval-cancel {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--control-text);
+}
+.transaction-approval-confirm {
+  border: 0;
+  background: var(--lime);
+  color: var(--ink);
+}
+.transaction-approval-note {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: center;
+}
+.transaction-stage-view {
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.transaction-stage-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(220, 255, 94, 0.38);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(220, 255, 94, 0.1);
+  color: var(--lime);
+  font-size: 24px;
+  font-weight: 800;
+}
+.transaction-stage-view:not(.success):not(.failure) .transaction-stage-icon {
+  animation: transaction-spin 1.15s linear infinite;
+}
+.transaction-stage-view code {
+  margin-top: 18px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+}
+.transaction-stage-view.failure .transaction-stage-icon {
+  border-color: rgba(255, 99, 145, 0.42);
+  background: rgba(255, 99, 145, 0.1);
+  color: var(--pink);
+}
+.transaction-stage-view.failure > button {
+  width: min(100%, 260px);
+  margin-top: 22px;
+}
+@keyframes transaction-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 @media (max-width: 900px) {
   .site-canvas {
@@ -3203,6 +3544,29 @@ button {
   .wallet-directory {
     grid-template-columns: 1fr;
   }
+  .transaction-approval-backdrop {
+    padding: 10px;
+    align-items: end;
+  }
+  .transaction-approval-dialog {
+    width: 100%;
+    max-height: 92vh;
+    padding: 24px 18px;
+    border-radius: 24px 24px 16px 16px;
+  }
+  .transaction-review-money,
+  .transaction-review-technical {
+    grid-template-columns: 1fr;
+  }
+  .transaction-review-technical {
+    gap: 8px;
+  }
+  .transaction-review-technical div {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+  .transaction-approval-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3211,5 +3575,8 @@ button {
   *::after {
     scroll-behavior: auto !important;
     transition: none !important;
+  }
+  .transaction-stage-view .transaction-stage-icon {
+    animation: none !important;
   }
 }

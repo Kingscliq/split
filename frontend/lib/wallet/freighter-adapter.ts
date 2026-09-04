@@ -8,7 +8,7 @@ import {
   WatchWalletChanges,
 } from "@stellar/freighter-api";
 import { NETWORK_PASSPHRASE } from "@/lib/split-contract";
-import { accountType, type WalletConnection, type WalletSigner } from "@/lib/wallet/types";
+import { accountType, type WalletConnection, type WalletTransportSigner } from "@/lib/wallet/types";
 
 export type FreighterIssue = {
   code: "missing" | "wrong_network" | "access" | "unknown";
@@ -24,7 +24,7 @@ function wrongNetworkIssue(network?: string): FreighterIssue {
   };
 }
 
-export const freighterSigner: WalletSigner = {
+export const freighterSigner: WalletTransportSigner = {
   async signTransaction(transactionXdr, options) {
     const signed = await signTransaction(transactionXdr, {
       address: options.address,

@@ -5,7 +5,7 @@ export type WalletSession = {
   provider: WalletProviderId;
   address: string;
   accountType: WalletAccountType;
-  loginMethod: "email" | "wallet";
+  loginMethod: "email" | "passkey" | "wallet";
 };
 
 export type SignTransactionOptions = {
@@ -13,13 +13,64 @@ export type SignTransactionOptions = {
   networkPassphrase: string;
 };
 
-export type WalletSigner = {
+export type WalletTransportSigner = {
   signTransaction: (transactionXdr: string, options: SignTransactionOptions) => Promise<string>;
+};
+
+export type TransactionApprovalParticipant = {
+  address: string;
+  displayName: string;
+  amount?: bigint;
+};
+
+export type TransactionApprovalRequest = {
+  action: "create" | "pay" | "close";
+  account: string;
+  contractId: string;
+  network: "Stellar Testnet";
+  title: string;
+  splitId?: number;
+  asset?: string;
+  amount?: bigint;
+  requestedAmount?: bigint;
+  participants?: TransactionApprovalParticipant[];
+};
+
+export type TransactionStage =
+  | "preparing"
+  | "review"
+  | "signing"
+  | "submitting"
+  | "confirming"
+  | "success"
+  | "failure";
+
+export type TransactionApprovalState = {
+  request: TransactionApprovalRequest;
+  stage: TransactionStage;
+  hash?: string;
+  error?: string;
+};
+
+export type TransactionExecutionControls = {
+  requestApproval: () => Promise<void>;
+  signTransaction: WalletTransportSigner["signTransaction"];
+  setStage: (
+    stage: Exclude<TransactionStage, "preparing" | "review" | "failure">,
+    hash?: string,
+  ) => void;
+};
+
+export type WalletSigner = {
+  runTransaction: <T>(
+    request: TransactionApprovalRequest,
+    execute: (controls: TransactionExecutionControls) => Promise<T>,
+  ) => Promise<T>;
 };
 
 export type WalletConnection = {
   session: WalletSession;
-  signer: WalletSigner;
+  signer: WalletTransportSigner;
 };
 
 export function accountType(address: string): WalletAccountType {

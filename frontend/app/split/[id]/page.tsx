@@ -201,7 +201,10 @@ export default function SplitDetailPage() {
         return;
       }
 
-      const result = await payShare(splitId, payer, remaining, signer);
+      const result = await payShare(splitId, payer, remaining, signer, {
+        title: split.title,
+        asset: symbol,
+      });
       recordReceipt("pay", result.hash);
       await Promise.all([load(), loadWalletBalance()]);
     } catch (caught) {
@@ -234,7 +237,7 @@ export default function SplitDetailPage() {
     if (creator !== split.creator) return setCloseError("Only the creator can close this split.");
     setTransaction("close");
     try {
-      const result = await closeSplit(splitId, creator, signer);
+      const result = await closeSplit(splitId, creator, signer, split.title);
       recordReceipt("close", result.hash);
       await load();
     } catch (caught) {

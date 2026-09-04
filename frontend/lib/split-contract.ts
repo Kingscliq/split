@@ -10,7 +10,7 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
-import type { WalletSigner } from "@/lib/wallet/types";
+import type { TransactionApprovalRequest, WalletSigner } from "@/lib/wallet/types";
 
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
 export const NETWORK_NAME = "TESTNET";
@@ -183,69 +183,97 @@ async function read(method: string, args: xdr.ScVal[] = []) {
   return readFrom(contract, method, args);
 }
 
-async function write(source: string, method: string, args: xdr.ScVal[], signer: WalletSigner) {
-  try {
-    const transaction = await buildInvocation(source, method, args);
-    const prepared = await server.prepareTransaction(transaction);
-    const signedTransactionXdr = await signer.signTransaction(prepared.toXDR(), {
-      address: source,
-      networkPassphrase: NETWORK_PASSPHRASE,
-    });
-    const signedTransaction = TransactionBuilder.fromXDR(signedTransactionXdr, NETWORK_PASSPHRASE);
-    const submitted = await server.sendTransaction(signedTransaction);
-    if (submitted.status === "ERROR") {
-      const resultCode = submitted.errorResult
-        ? transactionResultCode(submitted.errorResult)
-        : "unknownTransactionError";
-      logTransactionFailure("submission", {
-        method,
-        status: submitted.status,
-        resultCode,
-        hash: submitted.hash,
-        latestLedger: submitted.latestLedger,
-        errorResultXdr: submitted.errorResult?.toXDR("base64"),
-        diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXDR("base64")),
-      });
-      throw new Error(
-        transactionErrors[resultCode] ??
-          `Stellar rejected the transaction (${resultCode}). Please try again.`,
-      );
-    }
-    if (submitted.status === "TRY_AGAIN_LATER") {
-      throw new Error(
-        "Stellar is temporarily unable to accept the transaction. Please try again shortly.",
-      );
-    }
+type WriteApproval = Omit<TransactionApprovalRequest, "account" | "contractId" | "network">;
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const result = await server.getTransaction(submitted.hash);
-      if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
-        return {
-          hash: submitted.hash,
-          value: result.returnValue ? scValToNative(result.returnValue) : null,
-        };
-      }
-      if (result.status === rpc.Api.GetTransactionStatus.FAILED) {
-        const resultCode = transactionResultCode(result.resultXdr);
-        logTransactionFailure("confirmation", {
-          method,
-          resultCode,
-          hash: submitted.hash,
-          ledger: result.ledger,
-          diagnosticEventsXdr: result.diagnosticEventsXdr?.map((event) => event.toXDR("base64")),
+async function write(
+  source: string,
+  method: string,
+  args: xdr.ScVal[],
+  signer: WalletSigner,
+  approval: WriteApproval,
+) {
+  return signer.runTransaction(
+    {
+      ...approval,
+      account: source,
+      contractId: CONTRACT_ID,
+      network: "Stellar Testnet",
+    },
+    async ({ requestApproval, signTransaction, setStage }) => {
+      try {
+        const transaction = await buildInvocation(source, method, args);
+        const prepared = await server.prepareTransaction(transaction);
+        await requestApproval();
+        setStage("signing");
+        const signedTransactionXdr = await signTransaction(prepared.toXDR(), {
+          address: source,
+          networkPassphrase: NETWORK_PASSPHRASE,
         });
-        throw new Error(
-          transactionErrors[resultCode] ?? `The transaction failed on-chain (${resultCode}).`,
+        const signedTransaction = TransactionBuilder.fromXDR(
+          signedTransactionXdr,
+          NETWORK_PASSPHRASE,
         );
+        setStage("submitting");
+        const submitted = await server.sendTransaction(signedTransaction);
+        if (submitted.status === "ERROR") {
+          const resultCode = submitted.errorResult
+            ? transactionResultCode(submitted.errorResult)
+            : "unknownTransactionError";
+          logTransactionFailure("submission", {
+            method,
+            status: submitted.status,
+            resultCode,
+            hash: submitted.hash,
+            latestLedger: submitted.latestLedger,
+            errorResultXdr: submitted.errorResult?.toXDR("base64"),
+            diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXDR("base64")),
+          });
+          throw new Error(
+            transactionErrors[resultCode] ??
+              `Stellar rejected the transaction (${resultCode}). Please try again.`,
+          );
+        }
+        if (submitted.status === "TRY_AGAIN_LATER") {
+          throw new Error(
+            "Stellar is temporarily unable to accept the transaction. Please try again shortly.",
+          );
+        }
+
+        setStage("confirming", submitted.hash);
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const result = await server.getTransaction(submitted.hash);
+          if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+            return {
+              hash: submitted.hash,
+              value: result.returnValue ? scValToNative(result.returnValue) : null,
+            };
+          }
+          if (result.status === rpc.Api.GetTransactionStatus.FAILED) {
+            const resultCode = transactionResultCode(result.resultXdr);
+            logTransactionFailure("confirmation", {
+              method,
+              resultCode,
+              hash: submitted.hash,
+              ledger: result.ledger,
+              diagnosticEventsXdr: result.diagnosticEventsXdr?.map((event) =>
+                event.toXDR("base64"),
+              ),
+            });
+            throw new Error(
+              transactionErrors[resultCode] ?? `The transaction failed on-chain (${resultCode}).`,
+            );
+          }
+        }
+        throw new Error(
+          "The transaction is still pending. Check Stellar Expert with the transaction hash.",
+        );
+      } catch (error) {
+        if (error instanceof Error && error.name === "TransactionApprovalCancelled") throw error;
+        throw contractError(error);
       }
-    }
-    throw new Error(
-      "The transaction is still pending. Check Stellar Expert with the transaction hash.",
-    );
-  } catch (error) {
-    throw contractError(error);
-  }
+    },
+  );
 }
 
 export function tokenSymbol(address: string): TokenSymbol | "TOKEN" {
@@ -412,6 +440,17 @@ export async function createSplit(
       xdr.ScVal.scvVec(input.participants.map(participantScVal)),
     ],
     signer,
+    {
+      action: "create",
+      title: input.title,
+      asset: tokenSymbol(input.token),
+      amount: input.totalAmount,
+      requestedAmount: input.requestedAmount,
+      participants: input.participants.map((participant) => ({
+        ...participant,
+        amount: input.totalAmount / BigInt(input.participants.length),
+      })),
+    },
   );
 }
 
@@ -420,6 +459,7 @@ export async function payShare(
   payer: string,
   amount: bigint,
   signer: WalletSigner,
+  details: { title: string; asset: string },
 ) {
   return write(
     payer,
@@ -430,9 +470,25 @@ export async function payShare(
       nativeToScVal(amount, { type: "i128" }),
     ],
     signer,
+    {
+      action: "pay",
+      title: details.title,
+      splitId,
+      asset: details.asset,
+      amount,
+    },
   );
 }
 
-export async function closeSplit(splitId: number, creator: string, signer: WalletSigner) {
-  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })], signer);
+export async function closeSplit(
+  splitId: number,
+  creator: string,
+  signer: WalletSigner,
+  title: string,
+) {
+  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })], signer, {
+    action: "close",
+    title,
+    splitId,
+  });
 }
