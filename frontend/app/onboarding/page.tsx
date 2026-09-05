@@ -5,13 +5,13 @@ import { FriendbotFunding } from "@/components/FriendbotFunding";
 const steps = [
   {
     number: "01",
-    title: "Choose how to continue",
-    body: "Continue with email for the simplest setup, or use an existing Stellar wallet if you already have Freighter.",
+    title: "Continue with Google",
+    body: "Google is the recommended option. The same Google account restores the same Testnet wallet across your browsers and devices.",
   },
   {
     number: "02",
-    title: "Use email—no extension required",
-    body: "Enter your email and the one-time code sent to you. Split restores the same embedded Testnet account when you return with that email.",
+    title: "Know your other options",
+    body: "Passkeys are fastest on the browser where they were created. Email code creates a separate wallet from Google, even with the same email.",
   },
   {
     number: "03",
@@ -33,8 +33,9 @@ export default function OnboardingPage() {
           <p className="eyebrow">Stellar Testnet setup</p>
           <h1>Get ready to use Split.</h1>
           <p className="guide-intro">
-            Continue with email or an existing Stellar wallet in a few minutes. Testnet XLM has no
-            real-world value, so you can learn the payment flow without spending real money.
+            Continue with Google in a few minutes, or choose another method when you need it.
+            Testnet XLM has no real-world value, so you can learn the payment flow without spending
+            real money.
           </p>
         </div>
         <span className="guide-time">About 3 minutes</span>
@@ -45,8 +46,8 @@ export default function OnboardingPage() {
         <div>
           <h2 id="safety-title">Your wallet credentials stay private</h2>
           <p>
-            Email login only asks for a one-time code. If you use an external wallet, never share
-            its password, secret key, or recovery phrase. Split only uses your public G… address.
+            Split never asks for your Google password, secret key, or recovery phrase. Email login
+            only asks for a one-time code, and Split only uses your public G… address.
           </p>
         </div>
       </section>
@@ -71,7 +72,7 @@ export default function OnboardingPage() {
         </div>
         <ul>
           <li>
-            <span aria-hidden="true">✓</span> You chose email or an existing Stellar wallet
+            <span aria-hidden="true">✓</span> You chose the sign-in method you intend to keep using
           </li>
           <li>
             <span aria-hidden="true">✓</span> The selected network says Testnet
@@ -84,21 +85,21 @@ export default function OnboardingPage() {
           </li>
         </ul>
         <div className="guide-actions">
+          <Link className="button button-primary" href="/split/create">
+            Create a split
+          </Link>
           <a
-            className="button button-primary"
+            className="button guide-secondary"
             href="https://developers.stellar.org/docs/build/guides/freighter/connect-testnet"
             target="_blank"
             rel="noreferrer"
           >
             Open Freighter setup guide <span>↗</span>
           </a>
-          <Link className="button guide-secondary" href="/split/create">
-            Create a split
-          </Link>
         </div>
         <p className="guide-next-note">
-          Already received a Split link? Return to it and continue with the same email or wallet
-          account that was assigned to the Split.
+          Already received a Split link? Return to it using the same sign-in method and wallet
+          address that the organizer assigned to you.
         </p>
       </section>
     </AppShell>

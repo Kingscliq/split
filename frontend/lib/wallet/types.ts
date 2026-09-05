@@ -33,6 +33,8 @@ export type TransactionApprovalRequest = {
   asset?: string;
   amount?: bigint;
   requestedAmount?: bigint;
+  recipient?: string;
+  networkFee?: bigint;
   participants?: TransactionApprovalParticipant[];
 };
 
@@ -53,7 +55,7 @@ export type TransactionApprovalState = {
 };
 
 export type TransactionExecutionControls = {
-  requestApproval: () => Promise<void>;
+  requestApproval: (details?: { networkFee?: bigint }) => Promise<void>;
   signTransaction: WalletTransportSigner["signTransaction"];
   setStage: (
     stage: Exclude<TransactionStage, "preparing" | "review" | "failure">,

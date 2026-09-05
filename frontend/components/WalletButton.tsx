@@ -17,6 +17,19 @@ export function DisconnectWalletButton({ className = "" }: { className?: string 
   );
 }
 
+function returnMessage(loginMethod: "email" | "google" | "passkey" | "wallet" | undefined) {
+  if (loginMethod === "google") {
+    return "Use the same Google account to return to this wallet on another device.";
+  }
+  if (loginMethod === "passkey") {
+    return "Use this passkey again in this browser to return to this wallet.";
+  }
+  if (loginMethod === "email") {
+    return "Choose email code again with this email address to return to this wallet.";
+  }
+  return "This disconnects the wallet from Split only.";
+}
+
 export function WalletButton() {
   const {
     address,
@@ -95,11 +108,7 @@ export function WalletButton() {
               </button>
             )}
             <DisconnectWalletButton />
-            <small>
-              {provider === "blux"
-                ? "Your wallet remains available when you sign in again with the same email."
-                : "This disconnects the wallet from Split only."}
-            </small>
+            <small>{returnMessage(session?.loginMethod)}</small>
           </div>
         </details>
       ) : (
@@ -110,7 +119,7 @@ export function WalletButton() {
           disabled={connecting || restoring}
         >
           <span className="wallet-orb" />
-          {restoring ? "Restoring…" : connecting ? "Continuing…" : "Continue"}
+          {restoring ? "Restoring…" : connecting ? "Continuing…" : "Create Split"}
         </button>
       )}
       {issue && !address && (

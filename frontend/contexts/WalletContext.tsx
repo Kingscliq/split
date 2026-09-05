@@ -254,21 +254,25 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
 
         try {
           const result = await execute({
-            requestApproval() {
-              setTransactionApproval({ request, stage: "review" });
+            requestApproval(details) {
+              setTransactionApproval({ request: { ...request, ...details }, stage: "review" });
               return new Promise<void>((resolve, reject) => {
                 pendingTransactionApproval.current = { resolve, reject };
               });
             },
             signTransaction: activeConnection.signer.signTransaction,
             setStage(stage, hash) {
-              setTransactionApproval({ request, stage, hash });
+              setTransactionApproval((current) => ({
+                request: current?.request ?? request,
+                stage,
+                hash,
+              }));
             },
           });
           setTransactionApproval((current) =>
             current ? { ...current, stage: "success" } : current,
           );
-          await new Promise((resolve) => window.setTimeout(resolve, 450));
+          await new Promise((resolve) => window.setTimeout(resolve, 750));
           setTransactionApproval(null);
           return result;
         } catch (caught) {
@@ -276,7 +280,12 @@ export function WalletProvider({ children, blux }: { children: ReactNode; blux?:
           if (error.name === "TransactionApprovalCancelled") {
             setTransactionApproval(null);
           } else {
-            setTransactionApproval({ request, stage: "failure", error: error.message });
+            setTransactionApproval((current) => ({
+              request: current?.request ?? request,
+              stage: "failure",
+              hash: current?.hash,
+              error: error.message,
+            }));
           }
           throw error;
         } finally {

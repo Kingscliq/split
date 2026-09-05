@@ -6,10 +6,17 @@ import { useRouter } from "next/navigation";
 import { StrKey } from "@stellar/stellar-sdk";
 import { AppShell } from "@/components/AppShell";
 import { useWallet } from "@/contexts/WalletContext";
-import { createSplit, TOKEN_CONTRACTS, toBaseUnits, type TokenSymbol } from "@/lib/split-contract";
+import {
+  createSplit,
+  isTransactionApprovalCancelled,
+  TOKEN_CONTRACTS,
+  toBaseUnits,
+  type TokenSymbol,
+} from "@/lib/split-contract";
 
 type Participant = { name: string; address: string; color: string };
 type ParticipantErrors = Record<number, { address?: string; name?: string }>;
+type CreateStep = 1 | 2 | 3;
 const colors = ["pink", "blue", "orange", "lime"];
 
 export default function CreateSplitPage() {
@@ -25,6 +32,7 @@ export default function CreateSplitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [participantErrors, setParticipantErrors] = useState<ParticipantErrors>({});
+  const [step, setStep] = useState<CreateStep>(1);
 
   const math = useMemo(() => {
     try {
@@ -105,6 +113,19 @@ export default function CreateSplitPage() {
     return true;
   }
 
+  function continueFromDetails() {
+    setError(null);
+    if (math.requestedUnits <= 0n) return setError("Enter an amount greater than zero.");
+    if (!title.trim()) return setError("Add a short title for this split.");
+    setStep(2);
+  }
+
+  function continueFromPeople() {
+    setError(null);
+    if (!validateParticipants()) return;
+    setStep(3);
+  }
+
   async function submit() {
     setError(null);
     if (!math.even)
@@ -132,6 +153,7 @@ export default function CreateSplitPage() {
       const receipt = new URLSearchParams({ action: "create", tx: result.hash });
       router.push(`/split/${Number(result.value)}?${receipt.toString()}`);
     } catch (caught) {
+      if (isTransactionApprovalCancelled(caught)) return;
       setError(caught instanceof Error ? caught.message : "Could not create the split.");
     } finally {
       setSubmitting(false);
@@ -140,35 +162,35 @@ export default function CreateSplitPage() {
 
   return (
     <AppShell active="create">
-      <div className="create-heading">
-        <Link href="/" className="back-button" aria-label="Back to dashboard">
-          ←
-        </Link>
-        <div>
-          <p className="eyebrow">New collection</p>
-          <h1>Create a split</h1>
-        </div>
-        <span className="step-pill">1 of 1</span>
-      </div>
+      <div className="transfer-flow">
+        <header className="transfer-header">
+          <Link
+            href={step === 1 ? "/" : "#"}
+            className="back-button"
+            aria-label="Go back"
+            onClick={(event) => {
+              if (step === 1) return;
+              event.preventDefault();
+              setError(null);
+              setStep((step - 1) as CreateStep);
+            }}
+          >
+            ←
+          </Link>
+          <div className="transfer-progress" aria-label={`Step ${step} of 3`}>
+            {[1, 2, 3].map((item) => (
+              <span className={item <= step ? "active" : ""} key={item} />
+            ))}
+          </div>
+          <span className="step-pill">{step} of 3</span>
+        </header>
 
-      <div className="onboarding-callout">
-        <div>
-          <strong>New to Stellar Testnet?</strong>
-          <span>Continue with email—no extension required—or use an existing Stellar wallet.</span>
-        </div>
-        <Link href="/onboarding">
-          Open the 3-minute guide <span>→</span>
-        </Link>
-      </div>
-
-      <div className="create-layout">
-        <section className="form-card">
-          <div className="amount-stage">
-            <label htmlFor="requested">
-              <strong>Collection amount</strong>
-              <span>How much do you want to collect from others?</span>
-            </label>
-            <div className="amount-input-wrap">
+        {step === 1 && (
+          <section className="transfer-step amount-step">
+            <p className="eyebrow">New split</p>
+            <h1>How much are you collecting?</h1>
+            <p className="transfer-intro">Enter only what the other participants will pay back.</p>
+            <div className="transfer-amount-input">
               <span aria-hidden="true">{token === "USDC" ? "$" : "✦"}</span>
               <input
                 id="requested"
@@ -179,83 +201,63 @@ export default function CreateSplitPage() {
                 onChange={(event) => {
                   setRequested(event.target.value);
                   setFinalAmount(event.target.value);
+                  setError(null);
                 }}
                 aria-label={`Collection amount in ${token}`}
-                aria-describedby="amount-help"
               />
               <b>{token}</b>
             </div>
-            <p id="amount-help">
-              Enter the total others are paying back. Do not include your own share.
-            </p>
-          </div>
-
-          <div className="form-section">
-            <label className="field-label" htmlFor="split-title">
-              What is it for?
-            </label>
-            <input
-              id="split-title"
-              className="text-input"
-              placeholder="Dinner, rent, a group trip…"
-              maxLength={80}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-
-          <div className="form-section two-column-fields">
-            <div>
-              <span className="field-label">Get paid in</span>
-              <div className="segment-control" aria-label="Settlement token">
-                {(["XLM", "USDC"] as const).map((option) => (
-                  <button
-                    className={token === option ? "selected" : ""}
-                    onClick={() => setToken(option)}
-                    type="button"
-                    key={option}
-                  >
-                    <span className={`token-dot ${option.toLowerCase()}`}>
-                      {option === "USDC" ? "$" : "✦"}
-                    </span>
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="field-label" htmlFor="final-amount">
-                Final split amount
-              </label>
-              <div className="compact-input">
-                <input
-                  id="final-amount"
-                  inputMode="decimal"
-                  value={finalAmount}
-                  placeholder="0.00"
-                  onChange={(event) => setFinalAmount(event.target.value)}
-                />
-                <span>{token}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section participants-section">
-            <div className="section-heading compact">
+            <div className="transfer-fields">
               <div>
-                <span className="field-label">Who is paying?</span>
-                <small>
-                  {participants.length} participant{participants.length === 1 ? "" : "s"}
-                </small>
+                <label className="field-label" htmlFor="split-title">
+                  What is it for?
+                </label>
+                <input
+                  id="split-title"
+                  className="text-input"
+                  placeholder="Dinner, rent, a group trip…"
+                  maxLength={80}
+                  value={title}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setError(null);
+                  }}
+                />
               </div>
-              <button
-                className="add-person"
-                type="button"
-                onClick={addParticipant}
-                disabled={participants.length >= 50}
-              >
-                ＋ Add person
-              </button>
+              <div>
+                <span className="field-label">Collect in</span>
+                <div className="segment-control" aria-label="Settlement token">
+                  {(["XLM", "USDC"] as const).map((option) => (
+                    <button
+                      className={token === option ? "selected" : ""}
+                      onClick={() => setToken(option)}
+                      type="button"
+                      key={option}
+                    >
+                      <span className={`token-dot ${option.toLowerCase()}`}>
+                        {option === "USDC" ? "$" : "✦"}
+                      </span>
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section className="transfer-step people-step">
+            <p className="eyebrow">Participants</p>
+            <h1>Who is paying?</h1>
+            <p className="transfer-intro">Each person will be assigned an equal share.</p>
+            <div className="people-step-summary">
+              <span>
+                {participants.length} {participants.length === 1 ? "person" : "people"}
+              </span>
+              <strong>
+                {math.each.toFixed(2)} {token} each
+              </strong>
             </div>
             <div className="participant-editor">
               {participants.map((participant, index) => (
@@ -271,13 +273,18 @@ export default function CreateSplitPage() {
                       className={`participant-field participant-field-primary${participantErrors[index]?.address ? " field-has-error" : ""}`}
                     >
                       <label htmlFor={`participant-${index}-address`}>
-                        Wallet address <span>Required</span>
+                        Wallet address
+                        <span className="required-mark" aria-hidden="true">
+                          *
+                        </span>
+                        <span className="sr-only">required</span>
                       </label>
                       <input
                         id={`participant-${index}-address`}
                         className="address-input"
                         placeholder="Paste public G… address"
                         value={participant.address}
+                        required
                         autoComplete="off"
                         spellCheck={false}
                         aria-invalid={Boolean(participantErrors[index]?.address)}
@@ -308,13 +315,20 @@ export default function CreateSplitPage() {
                     <div
                       className={`participant-field participant-field-secondary${participantErrors[index]?.name ? " field-has-error" : ""}`}
                     >
-                      <label htmlFor={`participant-${index}-name`}>Display name</label>
+                      <label htmlFor={`participant-${index}-name`}>
+                        Display name
+                        <span className="required-mark" aria-hidden="true">
+                          *
+                        </span>
+                        <span className="sr-only">required</span>
+                      </label>
                       <input
                         id={`participant-${index}-name`}
                         className="name-input"
                         placeholder="e.g. Favour"
                         maxLength={40}
                         value={participant.name}
+                        required
                         aria-invalid={Boolean(participantErrors[index]?.name)}
                         aria-describedby={
                           participantErrors[index]?.name
@@ -341,9 +355,6 @@ export default function CreateSplitPage() {
                       )}
                     </div>
                   </div>
-                  <strong>
-                    {math.each.toFixed(2)} <span>{token}</span>
-                  </strong>
                   <button
                     className="remove-person"
                     type="button"
@@ -356,69 +367,114 @@ export default function CreateSplitPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+            <button
+              className="add-person transfer-add-person"
+              type="button"
+              onClick={addParticipant}
+              disabled={participants.length >= 50}
+            >
+              ＋ Add another person
+            </button>
+          </section>
+        )}
 
-        <aside className="summary-card">
-          <p className="eyebrow">Equal split preview</p>
-          <h2>
-            {math.each.toFixed(2)} <span>{token}</span>
-          </h2>
-          <p className="summary-subtitle">per participant</p>
-          <div className="summary-people" aria-hidden="true">
-            {participants.slice(0, 4).map((person, index) => (
-              <span className={`avatar avatar-${person.color}`} key={index}>
-                {person.name.slice(0, 1).toUpperCase() || index + 1}
-              </span>
-            ))}
+        {step === 3 && (
+          <section className="transfer-step review-step">
+            <p className="eyebrow">Review</p>
+            <h1>Ready to create?</h1>
+            <p className="transfer-intro">Check the details before opening the approval screen.</p>
+            <div className="review-amount">
+              <span>Each person pays</span>
+              <strong>
+                {math.each.toFixed(2)} <small>{token}</small>
+              </strong>
+            </div>
+            <dl className="transfer-review-list">
+              <div>
+                <dt>For</dt>
+                <dd>{title}</dd>
+              </div>
+              <div>
+                <dt>Participants</dt>
+                <dd>{participants.length}</dd>
+              </div>
+              <div>
+                <dt>Requested</dt>
+                <dd>
+                  {Number(requested || 0).toFixed(2)} {token}
+                </dd>
+              </div>
+              <div>
+                <dt>Final split amount</dt>
+                <dd>
+                  <label className="review-final-amount">
+                    <input
+                      id="final-amount"
+                      inputMode="decimal"
+                      value={finalAmount}
+                      onChange={(event) => setFinalAmount(event.target.value)}
+                      aria-label="Final split amount"
+                    />
+                    <span>{token}</span>
+                  </label>
+                </dd>
+              </div>
+              {math.waived > 0 && (
+                <div>
+                  <dt>Waived remainder</dt>
+                  <dd>
+                    {math.waived.toFixed(2)} {token}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            {!math.even && (
+              <p className="validation-note">
+                The final amount must be positive, no greater than requested, and divide equally
+                between all participants.
+              </p>
+            )}
+          </section>
+        )}
+
+        {error && (
+          <p className="transfer-error" role="alert">
+            {error}
+          </p>
+        )}
+        <footer className="transfer-footer">
+          <div>
+            <strong>
+              {step === 1
+                ? "Amount and purpose"
+                : step === 2
+                  ? `${math.each.toFixed(2)} ${token} each`
+                  : `${Number(finalAmount || 0).toFixed(2)} ${token} total`}
+            </strong>
+            <span>
+              {step === 3 ? "You’ll approve before submission." : "Nothing is submitted yet."}
+            </span>
           </div>
-          <dl>
-            <div>
-              <dt>Requested</dt>
-              <dd>
-                {Number(requested || 0).toFixed(2)} {token}
-              </dd>
-            </div>
-            <div>
-              <dt>Final amount</dt>
-              <dd>
-                {Number(finalAmount || 0).toFixed(2)} {token}
-              </dd>
-            </div>
-            <div className={math.waived > 0 ? "waived-row" : ""}>
-              <dt>Waived remainder</dt>
-              <dd>
-                {math.waived.toFixed(2)} {token}
-              </dd>
-            </div>
-          </dl>
-          {!math.even && (
-            <p className="validation-note">
-              The final amount must be positive, no greater than requested, and divide evenly in
-              7-decimal Stellar units.
-            </p>
-          )}
-          {error && (
-            <p className="validation-note transaction-error" role="alert">
-              {error}
-            </p>
-          )}
           <button
-            className="button button-primary button-wide"
-            disabled={!math.even || submitting}
-            onClick={() => void submit()}
+            className="button button-primary"
             type="button"
+            disabled={submitting || (step === 3 && !math.even)}
+            onClick={() => {
+              if (step === 1) continueFromDetails();
+              else if (step === 2) continueFromPeople();
+              else void submit();
+            }}
           >
-            {submitting ? "Confirming…" : address ? "Create split" : "Connect & create"}{" "}
+            {submitting
+              ? "Confirming…"
+              : step === 3
+                ? address
+                  ? "Review & create"
+                  : "Connect & review"
+                : "Continue"}{" "}
             <span>→</span>
           </button>
-          <small className="network-note">
-            <span className="status-dot" />{" "}
-            {submitting
-              ? "Keep the confirmation window open while Testnet confirms."
-              : "You’ll review and approve this Testnet transaction before it is submitted."}
-          </small>
-        </aside>
+        </footer>
       </div>
     </AppShell>
   );

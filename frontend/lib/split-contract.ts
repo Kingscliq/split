@@ -75,6 +75,11 @@ export type SplitWithParticipants = SplitRecord & {
   participants: ParticipantShare[];
 };
 
+export type PendingShareRecord = {
+  split: SplitRecord;
+  share: ParticipantShare;
+};
+
 const server = new rpc.Server(RPC_URL, { allowHttp: RPC_URL.startsWith("http:") });
 const contract = new Contract(CONTRACT_ID);
 
@@ -98,6 +103,9 @@ function enumName(value: unknown): string {
 
 function contractError(error: unknown): Error {
   const message = error instanceof Error ? error.message : String(error);
+  if (/user rejected|user denied|declined|signature.*cancelled/i.test(message)) {
+    return new Error("The wallet signature was cancelled. Nothing was submitted to Stellar.");
+  }
   if (/account[^\n]*(not found|does not exist)|not found[^\n]*account/i.test(message)) {
     return new Error("This wallet has no Testnet XLM yet. Fund it with Friendbot, then try again.");
   }
@@ -120,6 +128,10 @@ function contractError(error: unknown): Error {
     "15": "The final amount cannot exceed the requested amount.",
   };
   return new Error(code && names[code] ? names[code] : message);
+}
+
+export function isTransactionApprovalCancelled(error: unknown) {
+  return error instanceof Error && error.name === "TransactionApprovalCancelled";
 }
 
 function transactionResultCode(result: xdr.TransactionResult): string {
@@ -203,7 +215,7 @@ async function write(
       try {
         const transaction = await buildInvocation(source, method, args);
         const prepared = await server.prepareTransaction(transaction);
-        await requestApproval();
+        await requestApproval({ networkFee: BigInt(prepared.fee) });
         setStage("signing");
         const signedTransactionXdr = await signTransaction(prepared.toXDR(), {
           address: source,
@@ -215,6 +227,7 @@ async function write(
         );
         setStage("submitting");
         const submitted = await server.sendTransaction(signedTransaction);
+        if (submitted.hash) setStage("submitting", submitted.hash);
         if (submitted.status === "ERROR") {
           const resultCode = submitted.errorResult
             ? transactionResultCode(submitted.errorResult)
@@ -327,6 +340,29 @@ export async function getSplit(splitId: number): Promise<SplitRecord | null> {
   };
 }
 
+function participantShareFromNative(value: Record<string, unknown>): ParticipantShare {
+  return {
+    splitId: Number(value.split_id),
+    participant: String(value.participant),
+    displayName: String(value.display_name),
+    amountOwed: BigInt(value.amount_owed as bigint),
+    amountPaid: BigInt(value.amount_paid as bigint),
+    status: enumName(value.status) as ParticipantStatus,
+  };
+}
+
+export async function getParticipant(
+  splitId: number,
+  participant: string,
+): Promise<ParticipantShare | null> {
+  const value = await read("get_participant", [
+    nativeToScVal(splitId, { type: "u32" }),
+    new Address(participant).toScVal(),
+  ]);
+  if (!value) return null;
+  return participantShareFromNative(value as Record<string, unknown>);
+}
+
 export async function getParticipants(
   splitId: number,
   start = 0,
@@ -337,14 +373,7 @@ export async function getParticipants(
     nativeToScVal(start, { type: "u32" }),
     nativeToScVal(limit, { type: "u32" }),
   ]);
-  return (values as Record<string, unknown>[]).map((value) => ({
-    splitId: Number(value.split_id),
-    participant: String(value.participant),
-    displayName: String(value.display_name),
-    amountOwed: BigInt(value.amount_owed as bigint),
-    amountPaid: BigInt(value.amount_paid as bigint),
-    status: enumName(value.status) as ParticipantStatus,
-  }));
+  return (values as Record<string, unknown>[]).map(participantShareFromNative);
 }
 
 export async function getRecentSplits(limit = 12): Promise<SplitRecord[]> {
@@ -374,6 +403,31 @@ export async function getSplitsForWallet(wallet: string, limit = 50): Promise<Sp
   );
 
   return visible.filter((record): record is SplitRecord => record !== null).reverse();
+}
+
+export async function getPendingSharesForWallet(
+  wallet: string,
+  limit = 50,
+): Promise<PendingShareRecord[]> {
+  const count = await getSplitCount();
+  const first = Math.max(0, count - Math.max(1, Math.min(limit, 50)));
+  const records = (
+    await Promise.all(
+      Array.from({ length: count - first }, (_, offset) => getSplit(first + offset)),
+    )
+  ).filter((record): record is SplitRecord => record !== null && record.status === "Active");
+
+  const pending = await Promise.all(
+    records.map(async (split) => {
+      const shares = await getParticipants(split.id, 0, split.participantCount);
+      const share = shares.find(
+        (participant) => participant.participant === wallet && participant.status !== "Paid",
+      );
+      return share ? { split, share } : null;
+    }),
+  );
+
+  return pending.filter((record): record is PendingShareRecord => record !== null).reverse();
 }
 
 export async function getAllSplitsWithParticipants(): Promise<SplitWithParticipants[]> {
@@ -459,7 +513,7 @@ export async function payShare(
   payer: string,
   amount: bigint,
   signer: WalletSigner,
-  details: { title: string; asset: string },
+  details: { title: string; asset: string; recipient: string },
 ) {
   return write(
     payer,
@@ -476,6 +530,7 @@ export async function payShare(
       splitId,
       asset: details.asset,
       amount,
+      recipient: details.recipient,
     },
   );
 }
