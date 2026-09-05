@@ -1,0 +1,244 @@
+.screen {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.paymentModal {
+  width: min(100%, 480px);
+  max-height: calc(100dvh - 40px);
+  padding: 32px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 27px;
+  background: var(--surface);
+  color: var(--cream);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+}
+
+.header h1,
+.state h1 {
+  margin: 8px 0 10px;
+  color: var(--cream);
+  font-size: clamp(34px, 6vw, 46px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  font-weight: 580;
+}
+
+.header > p:last-child,
+.state > p:not(:global(.eyebrow)) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.share {
+  margin-top: 28px;
+  padding: 24px;
+  border-radius: 20px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+  color: var(--cream);
+}
+
+.share span {
+  color: var(--quiet);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.share strong {
+  font-size: clamp(42px, 9vw, 62px);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  font-weight: 600;
+}
+
+.share small {
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.actions {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 0.75fr 1.25fr;
+  gap: 10px;
+}
+
+.actions button,
+.singleButton {
+  min-height: 54px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--lime);
+  color: #0b0c09;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.actions .cancelButton {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--control-text);
+}
+
+.actions button:disabled {
+  opacity: 0.5;
+}
+
+.payActions {
+  grid-template-columns: 1fr;
+}
+
+.payActions .payButton {
+  min-height: 68px;
+  border-radius: 18px;
+  box-shadow:
+    0 14px 34px rgba(217, 255, 74, 0.22),
+    0 0 28px rgba(217, 255, 74, 0.14);
+  font-size: 15px;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.payActions .payButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 17px 38px rgba(217, 255, 74, 0.27),
+    0 0 32px rgba(217, 255, 74, 0.17);
+  filter: brightness(1.03);
+}
+
+.payActions .payButton:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.payActions .cancelButton {
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.payActions .cancelButton:hover {
+  color: var(--cream);
+}
+
+.account {
+  display: block;
+  margin-top: 12px;
+  color: var(--quiet);
+  font-size: 8px;
+  text-align: center;
+}
+
+.state {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.state > a,
+.singleButton {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 28px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--lime);
+  color: #0b0c09;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.paidMark {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 18px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  background: var(--lime);
+  color: #0b0c09;
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.notice,
+.error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.error {
+  border-color: rgba(255, 93, 147, 0.28);
+  display: grid;
+  gap: 5px;
+  background: rgba(255, 93, 147, 0.08);
+  color: #ffacc6;
+}
+
+.error a {
+  width: max-content;
+  color: var(--lime);
+  font-weight: 750;
+}
+
+@media (max-width: 600px) {
+  .screen {
+    padding: 16px;
+  }
+
+  .paymentModal {
+    max-height: calc(100dvh - 32px);
+    padding: 27px 20px calc(24px + env(safe-area-inset-bottom));
+    border-radius: 25px;
+  }
+
+  .header h1,
+  .state h1 {
+    font-size: 38px;
+  }
+
+  .share {
+    padding: 22px 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .paymentModal {
+    padding-left: 17px;
+    padding-right: 17px;
+  }
+
+  .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .actions:not(.payActions) .cancelButton {
+    order: 2;
+  }
+}

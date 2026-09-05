@@ -4,8 +4,7 @@ import { useState } from "react";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { useWallet } from "@/contexts/WalletContext";
 import { shortAddress } from "@/lib/split-contract";
-
-const FRIENDBOT_URL = "https://friendbot.stellar.org";
+import { fundTestnetAccount } from "@/lib/testnet-funding";
 
 type FundingState =
   | { kind: "idle" }
@@ -13,29 +12,14 @@ type FundingState =
   | { kind: "success"; address: string }
   | { kind: "error"; message: string; source: "wallet" | "friendbot" };
 
-function fundingError(responseBody: string) {
-  const normalized = responseBody.toLowerCase();
-  if (normalized.includes("rate") || normalized.includes("limit")) {
-    return "Friendbot is receiving too many requests. Wait a moment, then try again.";
-  }
-  if (
-    normalized.includes("already") ||
-    normalized.includes("exist") ||
-    normalized.includes("balance")
-  ) {
-    return "Friendbot could not add more XLM. This wallet may already be funded—check its Testnet balance in Freighter.";
-  }
-  return "Friendbot could not fund this wallet. Check Freighter is on Testnet, then try again.";
-}
-
 export function FriendbotFunding() {
-  const { address, connecting, connect } = useWallet();
+  const { address, connecting, connect, refreshBalances } = useWallet();
   const [state, setState] = useState<FundingState>({ kind: "idle" });
 
   async function fundWallet() {
     setState({ kind: "funding" });
 
-    // Reconnect on every request so WalletContext re-checks the selected network.
+    // Continue through the active account flow before requesting Testnet funds.
     let connectionError: string | null = null;
     const testnetAddress = await connect((issue) => {
       connectionError = issue.message;
@@ -45,16 +29,15 @@ export function FriendbotFunding() {
         kind: "error",
         message:
           connectionError ??
-          "Could not connect Freighter. Check the wallet message above, then try again.",
+          "Could not continue with an account. Check the message above, then try again.",
         source: "wallet",
       });
       return;
     }
 
     try {
-      const response = await fetch(`${FRIENDBOT_URL}/?addr=${encodeURIComponent(testnetAddress)}`);
-      const responseBody = await response.text();
-      if (!response.ok) throw new Error(fundingError(responseBody));
+      await fundTestnetAccount(testnetAddress);
+      await refreshBalances();
       setState({ kind: "success", address: testnetAddress });
     } catch (caught) {
       setState({
@@ -62,7 +45,7 @@ export function FriendbotFunding() {
         message:
           caught instanceof Error
             ? caught.message
-            : "Friendbot could not fund this wallet. Try again shortly.",
+            : "Friendbot could not fund this account. Try again shortly.",
         source: "friendbot",
       });
     }
@@ -86,7 +69,7 @@ export function FriendbotFunding() {
             <p className="eyebrow">Testnet funding</p>
             <h2 id="friendbot-title">Fund your test wallet</h2>
             <p>
-              Friendbot creates or tops up your Testnet account with fake XLM. It sends no real
+              Friendbot creates or tops up your Testnet account with test XLM. It sends no real
               money and only receives your public wallet address.
             </p>
             {address && <CopyAddressButton address={address} className="friendbot-address" />}
@@ -107,7 +90,7 @@ export function FriendbotFunding() {
                 ? "Wallet funded ✓"
                 : address
                   ? "Fund my Testnet wallet"
-                  : "Connect and fund wallet"}
+                  : "Continue and fund account"}
           </button>
           <small>No signature or private key is required.</small>
         </div>
@@ -119,8 +102,7 @@ export function FriendbotFunding() {
             ✓
           </span>
           <span>
-            Test XLM was sent to {shortAddress(state.address)}. Open Freighter to confirm the
-            Testnet balance.
+            Test XLM was sent to {shortAddress(state.address)}. You’re ready to create a Split.
           </span>
         </div>
       )}

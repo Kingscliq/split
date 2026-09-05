@@ -5,6 +5,9 @@ target/
 .soroban/
 .stellar/
 
+# Supabase CLI-generated project metadata and version cache
+supabase/.temp/
+
 # Node dependencies
 node_modules/
 frontend/node_modules/
@@ -14,10 +17,13 @@ frontend/node_modules/
 out/
 dist/
 build/
+*.tsbuildinfo
 frontend/.next/
 frontend/out/
 frontend/dist/
 frontend/build/
+experiments/blux-poc/vite.config.js
+experiments/blux-poc/vite.config.d.ts
 
 # Logs
 *.log

@@ -10,7 +10,7 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
-import { signTransaction } from "@stellar/freighter-api";
+import type { TransactionApprovalRequest, WalletSigner } from "@/lib/wallet/types";
 
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
 export const NETWORK_NAME = "TESTNET";
@@ -75,6 +75,11 @@ export type SplitWithParticipants = SplitRecord & {
   participants: ParticipantShare[];
 };
 
+export type PendingShareRecord = {
+  split: SplitRecord;
+  share: ParticipantShare;
+};
+
 const server = new rpc.Server(RPC_URL, { allowHttp: RPC_URL.startsWith("http:") });
 const contract = new Contract(CONTRACT_ID);
 
@@ -98,6 +103,9 @@ function enumName(value: unknown): string {
 
 function contractError(error: unknown): Error {
   const message = error instanceof Error ? error.message : String(error);
+  if (/user rejected|user denied|declined|signature.*cancelled/i.test(message)) {
+    return new Error("The wallet signature was cancelled. Nothing was submitted to Stellar.");
+  }
   if (/account[^\n]*(not found|does not exist)|not found[^\n]*account/i.test(message)) {
     return new Error("This wallet has no Testnet XLM yet. Fund it with Friendbot, then try again.");
   }
@@ -122,9 +130,13 @@ function contractError(error: unknown): Error {
   return new Error(code && names[code] ? names[code] : message);
 }
 
+export function isTransactionApprovalCancelled(error: unknown) {
+  return error instanceof Error && error.name === "TransactionApprovalCancelled";
+}
+
 function transactionResultCode(result: xdr.TransactionResult): string {
   try {
-    return String(result.result().switch().name);
+    return result.result.type;
   } catch {
     return "unknownTransactionError";
   }
@@ -183,70 +195,98 @@ async function read(method: string, args: xdr.ScVal[] = []) {
   return readFrom(contract, method, args);
 }
 
-async function write(source: string, method: string, args: xdr.ScVal[]) {
-  try {
-    const transaction = await buildInvocation(source, method, args);
-    const prepared = await server.prepareTransaction(transaction);
-    const signed = await signTransaction(prepared.toXDR(), {
-      address: source,
-      networkPassphrase: NETWORK_PASSPHRASE,
-    });
-    if (signed.error) throw new Error(signed.error.message);
-    const signedTransaction = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE);
-    const submitted = await server.sendTransaction(signedTransaction);
-    if (submitted.status === "ERROR") {
-      const resultCode = submitted.errorResult
-        ? transactionResultCode(submitted.errorResult)
-        : "unknownTransactionError";
-      logTransactionFailure("submission", {
-        method,
-        status: submitted.status,
-        resultCode,
-        hash: submitted.hash,
-        latestLedger: submitted.latestLedger,
-        errorResultXdr: submitted.errorResult?.toXDR("base64"),
-        diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXDR("base64")),
-      });
-      throw new Error(
-        transactionErrors[resultCode] ??
-          `Stellar rejected the transaction (${resultCode}). Please try again.`,
-      );
-    }
-    if (submitted.status === "TRY_AGAIN_LATER") {
-      throw new Error(
-        "Stellar is temporarily unable to accept the transaction. Please try again shortly.",
-      );
-    }
+type WriteApproval = Omit<TransactionApprovalRequest, "account" | "contractId" | "network">;
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const result = await server.getTransaction(submitted.hash);
-      if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
-        return {
-          hash: submitted.hash,
-          value: result.returnValue ? scValToNative(result.returnValue) : null,
-        };
-      }
-      if (result.status === rpc.Api.GetTransactionStatus.FAILED) {
-        const resultCode = transactionResultCode(result.resultXdr);
-        logTransactionFailure("confirmation", {
-          method,
-          resultCode,
-          hash: submitted.hash,
-          ledger: result.ledger,
-          diagnosticEventsXdr: result.diagnosticEventsXdr?.map((event) => event.toXDR("base64")),
+async function write(
+  source: string,
+  method: string,
+  args: xdr.ScVal[],
+  signer: WalletSigner,
+  approval: WriteApproval,
+) {
+  return signer.runTransaction(
+    {
+      ...approval,
+      account: source,
+      contractId: CONTRACT_ID,
+      network: "Stellar Testnet",
+    },
+    async ({ requestApproval, signTransaction, setStage }) => {
+      try {
+        const transaction = await buildInvocation(source, method, args);
+        const prepared = await server.prepareTransaction(transaction);
+        await requestApproval({ networkFee: BigInt(prepared.fee) });
+        setStage("signing");
+        const signedTransactionXdr = await signTransaction(prepared.toXDR(), {
+          address: source,
+          networkPassphrase: NETWORK_PASSPHRASE,
         });
-        throw new Error(
-          transactionErrors[resultCode] ?? `The transaction failed on-chain (${resultCode}).`,
+        const signedTransaction = TransactionBuilder.fromXDR(
+          signedTransactionXdr,
+          NETWORK_PASSPHRASE,
         );
+        setStage("submitting");
+        const submitted = await server.sendTransaction(signedTransaction);
+        if (submitted.hash) setStage("submitting", submitted.hash);
+        if (submitted.status === "ERROR") {
+          const resultCode = submitted.errorResult
+            ? transactionResultCode(submitted.errorResult)
+            : "unknownTransactionError";
+          logTransactionFailure("submission", {
+            method,
+            status: submitted.status,
+            resultCode,
+            hash: submitted.hash,
+            latestLedger: submitted.latestLedger,
+            errorResultXdr: submitted.errorResult?.toXDR("base64"),
+            diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXDR("base64")),
+          });
+          throw new Error(
+            transactionErrors[resultCode] ??
+              `Stellar rejected the transaction (${resultCode}). Please try again.`,
+          );
+        }
+        if (submitted.status === "TRY_AGAIN_LATER") {
+          throw new Error(
+            "Stellar is temporarily unable to accept the transaction. Please try again shortly.",
+          );
+        }
+
+        setStage("confirming", submitted.hash);
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const result = await server.getTransaction(submitted.hash);
+          if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+            return {
+              hash: submitted.hash,
+              value: result.returnValue ? scValToNative(result.returnValue) : null,
+            };
+          }
+          if (result.status === rpc.Api.GetTransactionStatus.FAILED) {
+            const resultCode = transactionResultCode(result.resultXdr);
+            logTransactionFailure("confirmation", {
+              method,
+              resultCode,
+              hash: submitted.hash,
+              ledger: result.ledger,
+              diagnosticEventsXdr: result.diagnosticEventsXdr?.map((event) =>
+                event.toXDR("base64"),
+              ),
+            });
+            throw new Error(
+              transactionErrors[resultCode] ?? `The transaction failed on-chain (${resultCode}).`,
+            );
+          }
+        }
+        throw new Error(
+          "The transaction is still pending. Check Stellar Expert with the transaction hash.",
+        );
+      } catch (error) {
+        if (error instanceof Error && error.name === "TransactionApprovalCancelled") throw error;
+        throw contractError(error);
       }
-    }
-    throw new Error(
-      "The transaction is still pending. Check Stellar Expert with the transaction hash.",
-    );
-  } catch (error) {
-    throw contractError(error);
-  }
+    },
+  );
 }
 
 export function tokenSymbol(address: string): TokenSymbol | "TOKEN" {
@@ -300,6 +340,29 @@ export async function getSplit(splitId: number): Promise<SplitRecord | null> {
   };
 }
 
+function participantShareFromNative(value: Record<string, unknown>): ParticipantShare {
+  return {
+    splitId: Number(value.split_id),
+    participant: String(value.participant),
+    displayName: String(value.display_name),
+    amountOwed: BigInt(value.amount_owed as bigint),
+    amountPaid: BigInt(value.amount_paid as bigint),
+    status: enumName(value.status) as ParticipantStatus,
+  };
+}
+
+export async function getParticipant(
+  splitId: number,
+  participant: string,
+): Promise<ParticipantShare | null> {
+  const value = await read("get_participant", [
+    nativeToScVal(splitId, { type: "u32" }),
+    new Address(participant).toScVal(),
+  ]);
+  if (!value) return null;
+  return participantShareFromNative(value as Record<string, unknown>);
+}
+
 export async function getParticipants(
   splitId: number,
   start = 0,
@@ -310,14 +373,7 @@ export async function getParticipants(
     nativeToScVal(start, { type: "u32" }),
     nativeToScVal(limit, { type: "u32" }),
   ]);
-  return (values as Record<string, unknown>[]).map((value) => ({
-    splitId: Number(value.split_id),
-    participant: String(value.participant),
-    displayName: String(value.display_name),
-    amountOwed: BigInt(value.amount_owed as bigint),
-    amountPaid: BigInt(value.amount_paid as bigint),
-    status: enumName(value.status) as ParticipantStatus,
-  }));
+  return (values as Record<string, unknown>[]).map(participantShareFromNative);
 }
 
 export async function getRecentSplits(limit = 12): Promise<SplitRecord[]> {
@@ -347,6 +403,31 @@ export async function getSplitsForWallet(wallet: string, limit = 50): Promise<Sp
   );
 
   return visible.filter((record): record is SplitRecord => record !== null).reverse();
+}
+
+export async function getPendingSharesForWallet(
+  wallet: string,
+  limit = 50,
+): Promise<PendingShareRecord[]> {
+  const count = await getSplitCount();
+  const first = Math.max(0, count - Math.max(1, Math.min(limit, 50)));
+  const records = (
+    await Promise.all(
+      Array.from({ length: count - first }, (_, offset) => getSplit(first + offset)),
+    )
+  ).filter((record): record is SplitRecord => record !== null && record.status === "Active");
+
+  const pending = await Promise.all(
+    records.map(async (split) => {
+      const shares = await getParticipants(split.id, 0, split.participantCount);
+      const share = shares.find(
+        (participant) => participant.participant === wallet && participant.status !== "Paid",
+      );
+      return share ? { split, share } : null;
+    }),
+  );
+
+  return pending.filter((record): record is PendingShareRecord => record !== null).reverse();
 }
 
 export async function getAllSplitsWithParticipants(): Promise<SplitWithParticipants[]> {
@@ -390,32 +471,79 @@ function participantScVal(participant: NewParticipant) {
   );
 }
 
-export async function createSplit(input: {
-  creator: string;
-  title: string;
-  token: string;
-  requestedAmount: bigint;
-  totalAmount: bigint;
-  participants: NewParticipant[];
-}) {
-  return write(input.creator, "create_split", [
-    new Address(input.creator).toScVal(),
-    nativeToScVal(input.title),
-    new Address(input.token).toScVal(),
-    nativeToScVal(input.requestedAmount, { type: "i128" }),
-    nativeToScVal(input.totalAmount, { type: "i128" }),
-    xdr.ScVal.scvVec(input.participants.map(participantScVal)),
-  ]);
+export async function createSplit(
+  input: {
+    creator: string;
+    title: string;
+    token: string;
+    requestedAmount: bigint;
+    totalAmount: bigint;
+    participants: NewParticipant[];
+  },
+  signer: WalletSigner,
+) {
+  return write(
+    input.creator,
+    "create_split",
+    [
+      new Address(input.creator).toScVal(),
+      nativeToScVal(input.title),
+      new Address(input.token).toScVal(),
+      nativeToScVal(input.requestedAmount, { type: "i128" }),
+      nativeToScVal(input.totalAmount, { type: "i128" }),
+      xdr.ScVal.scvVec(input.participants.map(participantScVal)),
+    ],
+    signer,
+    {
+      action: "create",
+      title: input.title,
+      asset: tokenSymbol(input.token),
+      amount: input.totalAmount,
+      requestedAmount: input.requestedAmount,
+      participants: input.participants.map((participant) => ({
+        ...participant,
+        amount: input.totalAmount / BigInt(input.participants.length),
+      })),
+    },
+  );
 }
 
-export async function payShare(splitId: number, payer: string, amount: bigint) {
-  return write(payer, "pay_share", [
-    nativeToScVal(splitId, { type: "u32" }),
-    new Address(payer).toScVal(),
-    nativeToScVal(amount, { type: "i128" }),
-  ]);
+export async function payShare(
+  splitId: number,
+  payer: string,
+  amount: bigint,
+  signer: WalletSigner,
+  details: { title: string; asset: string; recipient: string },
+) {
+  return write(
+    payer,
+    "pay_share",
+    [
+      nativeToScVal(splitId, { type: "u32" }),
+      new Address(payer).toScVal(),
+      nativeToScVal(amount, { type: "i128" }),
+    ],
+    signer,
+    {
+      action: "pay",
+      title: details.title,
+      splitId,
+      asset: details.asset,
+      amount,
+      recipient: details.recipient,
+    },
+  );
 }
 
-export async function closeSplit(splitId: number, creator: string) {
-  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })]);
+export async function closeSplit(
+  splitId: number,
+  creator: string,
+  signer: WalletSigner,
+  title: string,
+) {
+  return write(creator, "close_split", [nativeToScVal(splitId, { type: "u32" })], signer, {
+    action: "close",
+    title,
+    splitId,
+  });
 }

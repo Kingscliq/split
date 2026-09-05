@@ -7,25 +7,43 @@ import { FREIGHTER_INSTALL_URL, useWallet } from "@/contexts/WalletContext";
 import { shortAddress } from "@/lib/split-contract";
 
 export function DisconnectWalletButton({ className = "" }: { className?: string }) {
-  const { address, disconnect } = useWallet();
+  const { address, provider, disconnect } = useWallet();
   if (!address) return null;
 
   return (
     <button className={`wallet-disconnect ${className}`.trim()} type="button" onClick={disconnect}>
-      <span aria-hidden="true">↪</span> Disconnect wallet
+      <span aria-hidden="true">↪</span> {provider === "blux" ? "Log out" : "Disconnect wallet"}
     </button>
   );
+}
+
+function returnMessage(loginMethod: "email" | "google" | "passkey" | "wallet" | undefined) {
+  if (loginMethod === "google") {
+    return "Use the same Google account to return to this wallet on another device.";
+  }
+  if (loginMethod === "passkey") {
+    return "Use this passkey again in this browser to return to this wallet.";
+  }
+  if (loginMethod === "email") {
+    return "Choose email code again with this email address to return to this wallet.";
+  }
+  return "This disconnects the wallet from Split only.";
 }
 
 export function WalletButton() {
   const {
     address,
+    session,
+    provider,
+    restoring,
     connecting,
     issue,
     balances,
+    accountFunded,
     balanceLoading,
     balanceError,
     connect,
+    openProfile,
     refreshBalances,
   } = useWallet();
   return (
@@ -43,7 +61,11 @@ export function WalletButton() {
           </summary>
           <div className="wallet-menu-panel">
             <div className="wallet-menu-heading">
-              <span>Connected on Testnet</span>
+              <span>
+                {provider === "blux"
+                  ? `${session?.loginMethod === "google" ? "Google" : session?.loginMethod === "passkey" ? "Passkey" : "Email"} account on Testnet`
+                  : "Wallet on Testnet"}
+              </span>
               <strong>{shortAddress(address)}</strong>
             </div>
             <div className="wallet-menu-balances" aria-live="polite">
@@ -74,13 +96,19 @@ export function WalletButton() {
                   {balanceLoading ? "Reading balances…" : (balanceError ?? "Balance unavailable.")}
                 </small>
               )}
-              {balances?.XLM === 0n && (
+              {(accountFunded === false || balances?.XLM === 0n) && (
                 <Link href="/onboarding#fund-testnet-wallet">Fund Testnet wallet →</Link>
               )}
             </div>
             <CopyAddressButton address={address} label="Copy wallet address" />
+            {provider === "blux" && (
+              <button className="copy-address" type="button" onClick={openProfile}>
+                <span>Manage account</span>
+                <i aria-hidden="true">→</i>
+              </button>
+            )}
             <DisconnectWalletButton />
-            <small>This disconnects the wallet from Split only.</small>
+            <small>{returnMessage(session?.loginMethod)}</small>
           </div>
         </details>
       ) : (
@@ -88,10 +116,10 @@ export function WalletButton() {
           className="wallet-chip"
           type="button"
           onClick={() => void connect()}
-          disabled={connecting}
+          disabled={connecting || restoring}
         >
           <span className="wallet-orb" />
-          {connecting ? "Connecting…" : "Connect wallet"}
+          {restoring ? "Restoring…" : connecting ? "Continuing…" : "Create Split"}
         </button>
       )}
       {issue && !address && (
