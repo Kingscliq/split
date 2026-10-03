@@ -49,6 +49,23 @@ export function BluxAppProvider({ children, appId }: { children: ReactNode; appI
         explorer: "stellarexpert",
         isPersistent: false,
         showWalletUIs: false,
+        appearance: {
+          logo: "/icon.svg",
+          fontFamily: "var(--font-geist-sans), Arial, sans-serif",
+          textColor: "#f4f0e9",
+          accentColor: "#d9ff4a",
+          background: "#171817",
+          fieldBackground: "#101110",
+          borderRadius: "20px",
+          borderColor: "rgba(255, 255, 255, 0.11)",
+          borderWidth: "1px",
+          outlineWidth: "1px",
+          outlineColor: "rgba(255, 255, 255, 0.11)",
+          outlineRadius: "24px",
+          backdropBlur: "12px",
+          backdropColor: "rgba(0, 0, 0, 0.82)",
+          boxShadow: "0 28px 90px rgba(0, 0, 0, 0.55)",
+        },
       }}
     >
       <BluxWalletProvider>{children}</BluxWalletProvider>

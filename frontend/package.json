@@ -11,8 +11,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@bluxcc/core": "^0.3.4",
-    "@bluxcc/react": "^0.3.3",
+    "@bluxcc/core": "0.3.9",
+    "@bluxcc/react": "0.3.9",
     "@stellar/freighter-api": "^5.0.0",
     "@stellar/stellar-sdk": "^17.0.1",
     "@tanstack/react-query": "^5.90.11",

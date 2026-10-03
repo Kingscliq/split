@@ -17,6 +17,7 @@ import {
   type SplitRecord,
 } from "@/lib/split-contract";
 import styles from "./page.module.css";
+import { isTestnetAccountFunded } from "@/lib/testnet-funding";
 
 type PayIssue = {
   kind: "wallet_missing" | "wrong_network" | "funding" | "not_participant" | "transaction";
@@ -129,6 +130,14 @@ export default function PaySharePage() {
     setPayIssue(null);
     setPaying(true);
     try {
+      if (!(await isTestnetAccountFunded(address))) {
+        setPayIssue({
+          kind: "funding",
+          message:
+            "Your wallet needs test XLM to get started. Fund your Testnet wallet, then try your payment again.",
+        });
+        return;
+      }
       const assetBalance = await getTokenBalance(split.token, address);
       const xlmBalance =
         split.token === TOKEN_CONTRACTS.XLM
