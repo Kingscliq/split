@@ -1,0 +1,146 @@
+[
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.10.16.png",
+    "archive": "desktop/01-create-purpose-amount.png",
+    "width": 3600,
+    "height": 2164
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.10.39.png",
+    "archive": "desktop/02-authentication-primary.png",
+    "width": 3593,
+    "height": 2172
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.11.25.png",
+    "archive": "desktop/03-account-menu.png",
+    "width": 3600,
+    "height": 2250
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.11.49.png",
+    "archive": "desktop/04-notifications.png",
+    "width": 3594,
+    "height": 2251
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.13.16.png",
+    "archive": "desktop/05-authentication-alternatives.png",
+    "width": 3600,
+    "height": 2092
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.14.39.png",
+    "archive": "desktop/06-create-participants.png",
+    "width": 3600,
+    "height": 2250
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.14.59.png",
+    "archive": "desktop/07-create-review.png",
+    "width": 3597,
+    "height": 2250
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.15.48.png",
+    "archive": "desktop/08-transaction-approval.png",
+    "width": 3600,
+    "height": 2249
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.16.04.png",
+    "archive": "desktop/09-signing-in-progress.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 11.17.22.png",
+    "archive": "testing/01-blux-xdr-decoding-response.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 13.02.58.png",
+    "archive": "testing/02-stellar-sdk-deprecation-warning.png",
+    "width": 1785,
+    "height": 760
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 13.08.27.png",
+    "archive": "testing/03-passkey-sign-in-failure.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 13.16.34.png",
+    "archive": "testing/04-blux-signing-failure.png",
+    "width": 3577,
+    "height": 2251
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 13.24.25.png",
+    "archive": "testing/05-blux-signing-http-400.png",
+    "width": 3600,
+    "height": 2230
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 13.26.19.png",
+    "archive": "testing/06-provider-support-report.png",
+    "width": 2835,
+    "height": 1632
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.03.20.png",
+    "archive": "desktop/10-create-awaiting-confirmation.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.03.31.png",
+    "archive": "desktop/11-create-confirmed.png",
+    "width": 3596,
+    "height": 2244
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.08.58.png",
+    "archive": "desktop/12-participant-payment-pending.png",
+    "width": 3598,
+    "height": 2092
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.09.22.png",
+    "archive": "desktop/13-pay-share-entry.png",
+    "width": 3600,
+    "height": 2175
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.10.10.png",
+    "archive": "testing/07-pay-account-missing-split21.png",
+    "width": 3600,
+    "height": 2174
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.14.35.png",
+    "archive": "testing/08-pay-wrong-account.png",
+    "width": 3597,
+    "height": 2169
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.18.40.png",
+    "archive": "testing/09-pay-account-missing-split22.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.19.59.png",
+    "archive": "desktop/14-pay-awaiting-confirmation.png",
+    "width": 1909,
+    "height": 2175
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.20.15.png",
+    "archive": "desktop/15-pay-confirmed.png",
+    "width": 3600,
+    "height": 2088
+  }
+]

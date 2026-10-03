@@ -2,7 +2,7 @@
 
 Status: Testnet capability proven; provider-neutral V2 integration implemented locally  
 Date: 2026-09-04  
-Scope: Wallet onboarding, authentication, signing, recovery, and external-wallet coexistence
+Scope: Wallet onboarding, authentication, signing, recovery, and external-wallet coexistencel
 
 ## 1. Decision summary
 

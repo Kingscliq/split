@@ -10,7 +10,7 @@ import { VersionSwitcher } from "@/components/VersionSwitcher";
 
 type AppShellProps = {
   children: ReactNode;
-  active?: "home" | "create" | "pay" | "onboarding" | "admin";
+  active?: "home" | "create" | "pay" | "onboarding" | "about" | "admin";
 };
 
 function Logo() {
@@ -64,6 +64,9 @@ export function AppShell({ children, active }: AppShellProps) {
               </Link>
               <Link className={active === "onboarding" ? "active" : ""} href="/onboarding">
                 <span>?</span> Testnet guide
+              </Link>
+              <Link className={active === "about" ? "active" : ""} href="/about">
+                <span>i</span> About Split
               </Link>
               <Link href="/#your-splits">
                 <span>◌</span> Your splits
@@ -152,6 +155,9 @@ export function AppShell({ children, active }: AppShellProps) {
                     </Link>
                     <Link className={active === "onboarding" ? "active" : ""} href="/onboarding">
                       <span>?</span> Testnet guide
+                    </Link>
+                    <Link className={active === "about" ? "active" : ""} href="/about">
+                      <span>i</span> About Split
                     </Link>
                     <Link href="/#your-splits">
                       <span>◌</span> Your splits

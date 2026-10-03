@@ -1,6 +1,6 @@
 import {
-  Address,
   Account,
+  Address,
   BASE_FEE,
   Contract,
   Networks,
@@ -106,7 +106,7 @@ function contractError(error: unknown): Error {
   if (/user rejected|user denied|declined|signature.*cancelled/i.test(message)) {
     return new Error("The wallet signature was cancelled. Nothing was submitted to Stellar.");
   }
-  if (/account[^\n]*(not found|does not exist)|not found[^\n]*account/i.test(message)) {
+  if (/account[^\n]*(not found|does not exist|entry is missing)|not found[^\n]*account/i.test(message)) {
     return new Error("This wallet has no Testnet XLM yet. Fund it with Friendbot, then try again.");
   }
   const code = message.match(/Error\(Contract, #(\d+)\)/)?.[1];
@@ -217,14 +217,17 @@ async function write(
         const prepared = await server.prepareTransaction(transaction);
         await requestApproval({ networkFee: BigInt(prepared.fee) });
         setStage("signing");
-        const signedTransactionXdr = await signTransaction(prepared.toXDR(), {
+        
+        const signedTransactionXdr = await signTransaction(prepared.toXdr(), {
           address: source,
           networkPassphrase: NETWORK_PASSPHRASE,
         });
-        const signedTransaction = TransactionBuilder.fromXDR(
+        
+        const signedTransaction = TransactionBuilder.fromXdr(
           signedTransactionXdr,
           NETWORK_PASSPHRASE,
         );
+        
         setStage("submitting");
         const submitted = await server.sendTransaction(signedTransaction);
         if (submitted.hash) setStage("submitting", submitted.hash);
@@ -238,8 +241,8 @@ async function write(
             resultCode,
             hash: submitted.hash,
             latestLedger: submitted.latestLedger,
-            errorResultXdr: submitted.errorResult?.toXDR("base64"),
-            diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXDR("base64")),
+            errorResultXdr: submitted.errorResult?.toXdr("base64"),
+            diagnosticEventsXdr: submitted.diagnosticEvents?.map((event) => event.toXdr("base64")),
           });
           throw new Error(
             transactionErrors[resultCode] ??
@@ -270,7 +273,7 @@ async function write(
               hash: submitted.hash,
               ledger: result.ledger,
               diagnosticEventsXdr: result.diagnosticEventsXdr?.map((event) =>
-                event.toXDR("base64"),
+                event.toXdr("base64"),
               ),
             });
             throw new Error(
@@ -457,10 +460,12 @@ export async function getTokenBalance(token: string, wallet: string): Promise<bi
     return BigInt(value ?? 0);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // Classic-asset SAC contracts report a missing trustline as a contract
-    // error. For a balance display, that is equivalent to holding zero.
-    if (/trustline entry is missing/i.test(message)) return 0n;
-    throw error;
+    // Missing classic accounts and asset trustlines both have zero balance.
+    // Other RPC failures must remain errors, rather than imply missing funds.
+    if (/(?:account|trustline) entry is missing/i.test(message)) return 0n;
+    throw new Error("Could not check your token balance. Please try again shortly.", {
+      cause: error,
+    });
   }
 }
 
