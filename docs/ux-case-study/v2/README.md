@@ -34,3 +34,9 @@ Reference: https://github.com/stellar/stellar-xdr/blob/main/Stellar-transaction.
 ## Later captures — 3 October, 17:03–17:08
 
 Three additional screenshots show waiting for creation confirmation, Split #21 with a creation-confirmed banner, and the assigned participant's pending share with Pay your share. The creator view shows zero collected and zero of one paid: creation confirmation is not payment confirmation. The UI reports confirmation on Stellar Testnet; the full transaction hash was not supplied for independent Explorer verification. Earlier signing errors are preserved as historical test findings. No provider response, exact fix, full cross-wallet regression or completed payment is established by these captures.
+
+## Pay-a-share captures — 3 October, 17:09–17:20
+
+Six new originals bring the archive to 24 captures. They record a payment entry view, account-entry-missing errors for Splits #21 and #22, wrong-account gating, payment awaiting confirmation, and the successful payment state for Split #22. The final capture reports Payment confirmed, Completed, 300 XLM collected, zero remaining, and one of one paid. This is a Testnet example, not a user or traction metric. The payment-confirmed image replaces the portfolio/Notion receipt placeholder.
+
+Split #21 (Vacation to bar beach, 200 XLM) is the creation/pending example. Split #22 (Trip to Abuja, 300 XLM) is the paid example. Do not present them as one uninterrupted transaction. Browser chrome indicates earlier deployed and later local testing environments; the final receipt is supplied user evidence. No full transaction hash was provided for independent chain verification. Screenshots establish the recorded UI states, not full regression or recovery coverage.

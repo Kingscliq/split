@@ -106,5 +106,41 @@
     "archive": "desktop/12-participant-payment-pending.png",
     "width": 3598,
     "height": 2092
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.09.22.png",
+    "archive": "desktop/13-pay-share-entry.png",
+    "width": 3600,
+    "height": 2175
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.10.10.png",
+    "archive": "testing/07-pay-account-missing-split21.png",
+    "width": 3600,
+    "height": 2174
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.14.35.png",
+    "archive": "testing/08-pay-wrong-account.png",
+    "width": 3597,
+    "height": 2169
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.18.40.png",
+    "archive": "testing/09-pay-account-missing-split22.png",
+    "width": 3600,
+    "height": 2338
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.19.59.png",
+    "archive": "desktop/14-pay-awaiting-confirmation.png",
+    "width": 1909,
+    "height": 2175
+  },
+  {
+    "source": "/Users/user/Documents/Screenshot 2026-10-03 at 17.20.15.png",
+    "archive": "desktop/15-pay-confirmed.png",
+    "width": 3600,
+    "height": 2088
   }
 ]
